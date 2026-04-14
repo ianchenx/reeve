@@ -1,0 +1,65 @@
+{
+  "name": "reeve-ai",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Self-hosted coding agent daemon that turns Linear tickets into pull requests using isolated AI agents",
+  "main": "./src/index.ts",
+  "bin": {
+    "reeve": "./src/cli/app.ts"
+  },
+  "files": [
+    "src/**/*.ts",
+    "!src/**/*.test.ts",
+    "!src/test-helpers.ts",
+    "!src/e2e/",
+    "skills/",
+    "dashboard/dist/",
+    "tsconfig.json"
+  ],
+  "scripts": {
+    "start": "bun src/cli/app.ts start",
+    "run": "bun src/cli/app.ts run",
+    "restart": "bun src/cli/app.ts restart",
+    "dev-server": "bun --watch src/cli/app.ts run --no-poll",
+    "dev-web": "cd dashboard && bun run dev",
+    "test": "bun test src/",
+    "typecheck": "bunx tsc --noEmit",
+    "build-web": "cd dashboard && bun run build",
+    "prepublishOnly": "cd dashboard && bun install && bun run build"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.2.0",
+    "cac": "^7.0.0",
+    "graphql": "^16.13.1",
+    "hono": "^4.12.12",
+    "picocolors": "^1.1.1",
+    "pino": "^10.3.1",
+    "pino-pretty": "^13.1.3",
+    "yaml": "^2.8.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@inquirer/prompts": "^8.3.0",
+    "@types/bun": "latest",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianchenx/reeve.git"
+  },
+  "homepage": "https://github.com/ianchenx/reeve",
+  "license": "MIT",
+  "author": "Ian Chen",
+  "keywords": [
+    "ai",
+    "agent",
+    "orchestration",
+    "daemon",
+    "linear",
+    "coding-agent",
+    "automation"
+  ]
+}

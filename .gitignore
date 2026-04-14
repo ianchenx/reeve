@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dashboard/dist/
+.env
+*.log
+.test-tmp/
+/events/
+/workspaces/
+
+.DS_Store
+.claude/
