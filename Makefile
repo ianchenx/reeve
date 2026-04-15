@@ -96,7 +96,7 @@ smoke:                  ## Verify package in clean Linux (no secrets needed)
 	@PKG=$$(ls -t reeve-ai-*.tgz | head -1); \
 	docker run --rm -v "$$(pwd)/$$PKG:/pkg/reeve-ai.tgz:ro" \
 		$(SMOKE_IMAGE) ./verify.sh; \
-	rm -f "$$PKG"
+	rc=$$?; rm -f "$$PKG"; exit $$rc
 
 smoke-full:             ## Verify package + config with real settings and gh auth
 	@npm pack --quiet
@@ -105,7 +105,7 @@ smoke-full:             ## Verify package + config with real settings and gh aut
 	docker run --rm -v "$$(pwd)/$$PKG:/pkg/reeve-ai.tgz:ro" \
 		$(SMOKE_MOUNTS_AUTH) \
 		$(SMOKE_IMAGE) ./verify.sh full; \
-	rm -f "$$PKG"
+	rc=$$?; rm -f "$$PKG"; exit $$rc
 
 smoke-dev:              ## Run local source in clean Linux (interactive, dashboard on :14500)
 	$(SMOKE_BUILD)
