@@ -232,6 +232,8 @@ make install            # 安装所有依赖
 make dev                # 后端监听 + Dashboard 开发服务器
 make test               # 运行全部测试
 make check              # 类型检查 + 测试
+make smoke              # Docker 环境验证 npm 包
+make e2e                # 端到端测试（需要 Linear 沙箱）
 make help               # 查看所有 make 目标
 ```
 

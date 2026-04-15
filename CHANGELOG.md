@@ -6,6 +6,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+- Linear issue filtering now uses workflow state type (unstarted/started) instead of display name, making it locale-independent
+
+### Added
+- Smoke tests: Docker-based package verification (`make smoke`, `make smoke-full`)
+- E2E test infrastructure: atomic fixture runner with real Linear issues (`make e2e`, `make e2e-happy`, `make e2e-review`)
+- Testing documentation in AGENTS.md with three-layer test strategy (unit/smoke/E2E)
+
+### Removed
+- `activeStates` config field (replaced by `dispatchableStateTypes`)
+- `CandidateIssueSnapshot` type and related methods (simplified to direct issue arrays)
+
 ## [0.0.1] - 2026-04-14
 
 Initial open-source release.

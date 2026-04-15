@@ -11,4 +11,3 @@ dashboard/dist/
 .claude/
 *.tgz
 test-logs/
-HANDOFF.md

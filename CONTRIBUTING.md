@@ -17,6 +17,8 @@ make dev       # backend watch + dashboard HMR
 make test       # run all tests
 make check      # typecheck + tests
 make typecheck  # typecheck only (backend + dashboard)
+make smoke      # verify npm package in clean Docker
+make e2e        # end-to-end tests (requires Linear sandbox, see AGENTS.md)
 ```
 
 Before submitting a PR:

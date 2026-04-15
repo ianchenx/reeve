@@ -232,6 +232,8 @@ make install            # Install all dependencies
 make dev                # Backend watch + dashboard dev server
 make test               # Run all tests
 make check              # Typecheck + tests
+make smoke              # Verify npm package in clean Docker
+make e2e                # End-to-end tests (requires Linear sandbox)
 make help               # Show all make targets
 ```
 
