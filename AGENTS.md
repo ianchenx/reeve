@@ -3,6 +3,14 @@
 > Behavioral constraints for AI agents working in this repo.
 > For architecture and data flow, read the source.
 
+## Project Context
+
+Reeve is an **open-source** project published on GitHub. All code, commits, and PR descriptions are publicly visible and permanent. External contributors and users read this codebase — write code as if it will be reviewed by strangers.
+
+**Push policy:** Never `git push`, `gh pr merge`, or modify remote state without explicit human approval. Create commits and PRs locally; a human decides when to publish.
+
+**Quality bar:** Every commit must pass `npx tsc --noEmit` and `bun run test`. Commit messages follow conventional format (`feat:`, `fix:`, `refactor:`). No placeholder code, no TODO comments unless tracking a known issue, no debug logging left behind.
+
 ## Build & Test
 
 | Command | Purpose |
@@ -16,6 +24,59 @@
 | `bun run src/cli/app.ts restart` | Stop + start daemon |
 | `bun run src/cli/app.ts clean` | Clean task worktrees/logs |
 | `make dev` | Daemon hot-reload + dashboard HMR |
+
+## Testing
+
+Three layers, fast to slow:
+
+| Layer | Command | What it does | Needs secrets |
+|-------|---------|-------------|---------------|
+| Unit | `bun run test` | Pure logic tests | No |
+| Smoke | `make smoke` | Verify npm package installs and starts in clean Docker | No |
+| E2E | `make e2e` | Real Linear issue → daemon → agent → PR → verify | Yes |
+
+### E2E Tests
+
+Full end-to-end: creates a Linear issue, daemon picks it up, agent implements, result is verified against expected verdict.
+
+| Command | Scope |
+|---------|-------|
+| `make e2e` | All fixtures |
+| `make e2e-happy` | Happy-path only (implement → PR → done) |
+| `make e2e-review` | Review rejection loop (implement → review FAIL → retry → fix → done) |
+| `make e2e-one F=<path>` | Single fixture file |
+| `make e2e-daemon` | Start test daemon only (for manual runs) |
+| `make e2e-stop` | Stop test daemon |
+| `make e2e-clean` | Remove test state (preserves logs) |
+
+**Prerequisites:**
+- `~/.reeve-test/settings.json` — copy from `test/smoke/settings.example.json`, fill in real values
+- A sandbox repo (e.g. `ianchenx/reeve-test-sandbox`) with Linear project and matching team
+- `ANTHROPIC_API_KEY` env var (for `claude` agent) or `OPENAI_API_KEY` (for `codex` agent)
+- For review-rejection fixtures: `post: { "review": "claude" }` in the project config
+
+**Fixture format** (`test/smoke/fixtures/*.json`):
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | yes | Unique identifier for logs |
+| `mode` | yes | Category tag (`happy`, `review`) |
+| `title` | yes | Linear issue title (prefixed with `[e2e]` automatically) |
+| `prompt` | yes | Linear issue description — the agent's instructions |
+| `expect.verdict` | yes | `PASS` or `FAIL` |
+| `timeout` | no | Per-fixture timeout in seconds (default: `TASK_TIMEOUT` or 600) |
+
+Makefile manages daemon lifecycle (start/stop); `e2e.sh` is a stateless fixture runner. Logs persist at `~/.reeve-test/test-logs/`.
+
+### Smoke Tests
+
+Verify the published npm package works in a clean Linux environment (Docker):
+
+| Command | What it does |
+|---------|-------------|
+| `make smoke` | Install tarball, verify CLI starts (no secrets) |
+| `make smoke-full` | Same + validate config with real `settings.json` and `gh` auth |
+| `make smoke-dev` | Mount local source into clean Linux for interactive testing |
 
 ## Dashboard
 
