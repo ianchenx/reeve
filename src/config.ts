@@ -51,10 +51,6 @@ export interface DashboardConfig {
   enabled: boolean
 }
 
-export interface EventsConfig {
-  dir: string
-}
-
 export type SourceType = 'linear'
 
 export interface ReeveDaemonConfig {
@@ -64,7 +60,6 @@ export interface ReeveDaemonConfig {
   agent: AgentConfig
   polling: PollingConfig
   dashboard: DashboardConfig
-  events: EventsConfig
   projects: ProjectConfig[]
 }
 
@@ -85,7 +80,6 @@ const settingsSchema = z.object({
   defaultTeam: z.string().optional(),
   projects: z.array(settingsProjectSchema).optional(),
   workspace: z.object({ root: z.string() }).optional(),
-  agent: z.object({}).optional(),
   polling: z.object({ intervalMs: z.number() }).optional(),
   dashboard: z.object({
     port: z.number().optional(),
@@ -153,9 +147,6 @@ const DEFAULTS: ReeveDaemonConfig = {
     port: 14500,
     enabled: true,
   },
-  events: {
-    dir: "./events",
-  },
   projects: [],
 }
 
@@ -214,9 +205,6 @@ export function loadConfig(): ReeveDaemonConfig {
     dashboard: {
       port: settings.dashboard?.port ?? DEFAULTS.dashboard.port,
       enabled: settings.dashboard?.enabled ?? DEFAULTS.dashboard.enabled,
-    },
-    events: {
-      dir: resolvePath(DEFAULTS.events.dir),
     },
     projects,
   }

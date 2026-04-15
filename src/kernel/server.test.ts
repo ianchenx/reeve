@@ -73,7 +73,6 @@ beforeAll(() => {
     agent: { maxRounds: 1, stallTimeoutMs: 300000, turnTimeoutMs: 3600000, maxRetries: 2, default: "claude" },
     polling: { intervalMs: 60000 },
     dashboard: { port: 0, enabled: false },
-    events: { dir: resolve(TEST_DIR, "events") },
     projects: [{
       team: TEST_PROJECT.team,
       slug: TEST_PROJECT.slug,

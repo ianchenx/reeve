@@ -119,29 +119,6 @@ export const FETCH_WORKFLOW_STATES = `
   }
 `
 
-export const FETCH_ISSUES_BY_TITLE = `
-  query FetchIssuesByTitle($projectSlug: String!, $title: String!) {
-    issues(
-      filter: {
-        project: { slugId: { eq: $projectSlug } }
-        title: { eq: $title }
-      }
-      first: 50
-      orderBy: updatedAt
-    ) {
-      nodes {
-        id
-        identifier
-        title
-        state {
-          name
-          type
-        }
-      }
-    }
-  }
-`
-
 export const FETCH_PROJECT_BY_SLUG = `
   query FetchProjectBySlug($projectSlug: String!) {
     projects(filter: { slugId: { eq: $projectSlug } }) {
@@ -173,39 +150,3 @@ export const FETCH_ISSUE_TEAM = `
   }
 `
 
-export const FETCH_ISSUE_LABELS = `
-  query FetchIssueLabels($names: [String!]) {
-    issueLabels(filter: { name: { in: $names } }, first: 50) {
-      nodes {
-        id
-        name
-      }
-    }
-  }
-`
-
-export const CREATE_ISSUE = `
-  mutation CreateIssue(
-    $teamId: String!
-    $projectId: String!
-    $stateId: String!
-    $title: String!
-    $description: String!
-    $labelIds: [String!]
-  ) {
-    issueCreate(input: {
-      teamId: $teamId
-      projectId: $projectId
-      stateId: $stateId
-      title: $title
-      description: $description
-      labelIds: $labelIds
-    }) {
-      success
-      issue {
-        id
-        identifier
-      }
-    }
-  }
-`

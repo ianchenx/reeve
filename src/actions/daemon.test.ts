@@ -31,7 +31,6 @@ const CONFIG: ReeveDaemonConfig = {
   },
   polling: { intervalMs: 60000 },
   dashboard: { port: 14500, enabled: false },
-  events: { dir: "./events" },
   projects: [],
 }
 

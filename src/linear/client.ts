@@ -11,38 +11,11 @@ import {
   UPDATE_ISSUE_STATE,
   ADD_ISSUE_COMMENT,
   FETCH_WORKFLOW_STATES,
-  FETCH_ISSUES_BY_TITLE,
-  FETCH_PROJECT_BY_SLUG,
   FETCH_ISSUE_TEAM,
-  FETCH_ISSUE_LABELS,
-  CREATE_ISSUE,
 } from "./queries"
 
 const LINEAR_API_URL = "https://api.linear.app/graphql"
 
-export interface IssueBlockerSnapshot {
-  id: string
-  identifier: string
-  state: string | null
-}
-
-export interface LinearIssueLookup {
-  id: string
-  identifier: string
-  title: string
-  state: {
-    name: string
-    type: string
-  }
-}
-
-export interface CreateIssueInput {
-  title: string
-  description: string
-  projectSlug: string
-  stateName: string
-  labelNames: string[]
-}
 
 export class LinearClient {
   private apiKey: string
@@ -51,7 +24,6 @@ export class LinearClient {
   private terminalStates: string[]
   private readonly configuredStateNames: LinearConfig["stateNames"]
   private stateIdCache: Map<string, string> = new Map()
-  private projectContextCache: Map<string, { projectId: string; teamId: string; teamKey: string }> = new Map()
   private issueTeamCache: Map<string, { teamId: string; teamKey: string }> = new Map()
   private log: Console = console
 
@@ -97,15 +69,7 @@ export class LinearClient {
   }
 
   /**
-   * Fetch candidate issues for dispatch from the default project
-   */
-  async fetchCandidateIssues(): Promise<NormalizedIssue[]> {
-    return this.fetchCandidateIssuesForSlugs([this.projectSlug])
-  }
-
-  /**
    * Fetch candidate issues from multiple Linear projects in parallel.
-   * Each issue is tagged with its projectSlug for routing.
    */
   async fetchCandidateIssuesForSlugs(slugs: string[]): Promise<NormalizedIssue[]> {
     const results = await Promise.all(
@@ -171,55 +135,6 @@ export class LinearClient {
   async addComment(issueId: string, body: string): Promise<void> {
     await this.query(ADD_ISSUE_COMMENT, { issueId, body })
   }
-
-  async findOpenIssueByTitle(title: string, projectSlug: string): Promise<LinearIssueLookup | null> {
-    const data = await this.query<{
-      issues: {
-        nodes: Array<LinearIssueLookup>
-      }
-    }>(FETCH_ISSUES_BY_TITLE, { projectSlug, title })
-
-    return data.issues.nodes.find(issue => !this.isTerminalState(issue.state.name)) ?? null
-  }
-
-  async createIssue(input: CreateIssueInput): Promise<{ id: string; identifier: string }> {
-    const projectContext = await this.resolveProjectContext(input.projectSlug)
-    const [stateId, labelIds] = await Promise.all([
-      this.resolveStateId(projectContext?.teamKey ?? "", input.stateName),
-      this.resolveLabelIds(input.labelNames),
-    ])
-
-    if (!projectContext) {
-      throw new Error(`Unable to resolve Linear project ${input.projectSlug}`)
-    }
-    if (!stateId) {
-      throw new Error(`Unable to resolve Linear state ${input.stateName}`)
-    }
-
-    const data = await this.query<{
-      issueCreate: {
-        success: boolean
-        issue: {
-          id: string
-          identifier: string
-        }
-      }
-    }>(CREATE_ISSUE, {
-      teamId: projectContext.teamId,
-      projectId: projectContext.projectId,
-      stateId,
-      title: input.title,
-      description: input.description,
-      labelIds,
-    })
-
-    if (!data.issueCreate.success) {
-      throw new Error(`Linear issueCreate returned success=false for "${input.title}"`)
-    }
-
-    return data.issueCreate.issue
-  }
-
   /**
    * Resolve a state name to its Linear ID (cached)
    */
@@ -251,40 +166,6 @@ export class LinearClient {
     return this.stateIdCache.get(cacheKey) || null
   }
 
-  private async resolveProjectContext(projectSlug: string): Promise<{ projectId: string; teamId: string; teamKey: string } | null> {
-    if (this.projectContextCache.has(projectSlug)) {
-      return this.projectContextCache.get(projectSlug)!
-    }
-
-    const data = await this.query<{
-      projects: {
-        nodes: Array<{
-          id: string
-          slugId: string
-          teams: {
-            nodes: Array<{
-              id: string
-              key: string
-            }>
-          }
-        }>
-      }
-    }>(FETCH_PROJECT_BY_SLUG, { projectSlug })
-
-    const project = data.projects.nodes[0]
-    if (!project) return null
-    const team = project.teams.nodes[0]
-    if (!team) return null
-
-    const context = {
-      projectId: project.id,
-      teamId: team.id,
-      teamKey: team.key,
-    }
-    this.projectContextCache.set(projectSlug, context)
-    return context
-  }
-
   private async resolveIssueTeam(issueId: string): Promise<{ teamId: string; teamKey: string } | null> {
     if (this.issueTeamCache.has(issueId)) {
       return this.issueTeamCache.get(issueId)!
@@ -308,28 +189,6 @@ export class LinearClient {
     const context = { teamId: team.id, teamKey: team.key }
     this.issueTeamCache.set(issueId, context)
     return context
-  }
-
-  async resolveLabelIds(labelNames: string[]): Promise<string[]> {
-    if (labelNames.length === 0) return []
-
-    const uniqueNames = [...new Set(labelNames)]
-    const data = await this.query<{
-      issueLabels: {
-        nodes: Array<{
-          id: string
-          name: string
-        }>
-      }
-    }>(FETCH_ISSUE_LABELS, { names: uniqueNames })
-
-    const labelsByName = new Map(data.issueLabels.nodes.map(label => [label.name, label.id]))
-    const missing = uniqueNames.filter(name => !labelsByName.has(name))
-    if (missing.length > 0) {
-      throw new Error(`Missing Linear label(s): ${missing.join(", ")}`)
-    }
-
-    return uniqueNames.map(name => labelsByName.get(name)!)
   }
 
   /**

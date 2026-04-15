@@ -48,7 +48,6 @@ function createCtx(): ActionContext {
     },
     polling: { intervalMs: 1 },
     dashboard: { port: 14500, enabled: true },
-    events: { dir: "./events" },
     projects: [],
   }
 

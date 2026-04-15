@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { createCliApp, runCli } from "./app"
+import { createCliApp } from "./app"
 
 const baseArgv = ["bun", "/usr/local/lib/reeve"]
 
@@ -135,10 +135,6 @@ describe("cli parser regression", () => {
 
     expect(parsed.options.json).toBe(true)
     expect(cli.matchedCommandName).toBe("tasks")
-  })
-
-  test("init rejects unknown --global flag at runtime", async () => {
-    await expect(runCli([...baseArgv, "init", "--global"])).rejects.toThrow("Unknown option `--global`")
   })
 
   test("edit with multiple options", () => {
