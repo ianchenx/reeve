@@ -11,7 +11,6 @@ const CONFIG: ReeveDaemonConfig = {
     apiKey: "lin_api_test",
     projectSlug: "test-project",
     teamKey: "TEST",
-    activeStates: ["Todo", "In Progress"],
     dispatchableStateTypes: ["unstarted", "started"],
     terminalStates: ["Done", "Cancelled"],
     stateNames: {

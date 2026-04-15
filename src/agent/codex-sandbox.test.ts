@@ -10,7 +10,6 @@ function createConfig(apiKey?: string): ReeveDaemonConfig {
       apiKey: apiKey ?? "",
       projectSlug: "",
       teamKey: "",
-      activeStates: ["Todo", "In Progress"],
       dispatchableStateTypes: ["unstarted", "started"],
       terminalStates: ["Done", "Cancelled"],
       stateNames: {

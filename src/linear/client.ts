@@ -20,11 +20,6 @@ import {
 
 const LINEAR_API_URL = "https://api.linear.app/graphql"
 
-export interface CandidateIssueSnapshot {
-  issues: NormalizedIssue[]
-  filteredByStateType: number
-}
-
 export interface IssueBlockerSnapshot {
   id: string
   identifier: string
@@ -52,7 +47,6 @@ export interface CreateIssueInput {
 export class LinearClient {
   private apiKey: string
   private projectSlug: string
-  private activeStates: string[]
   private dispatchableStateTypes: Set<string>
   private terminalStates: string[]
   private readonly configuredStateNames: LinearConfig["stateNames"]
@@ -64,7 +58,6 @@ export class LinearClient {
   constructor(config: LinearConfig) {
     this.apiKey = config.apiKey
     this.projectSlug = config.projectSlug
-    this.activeStates = config.activeStates
     this.dispatchableStateTypes = new Set(
       config.dispatchableStateTypes.map(stateType => stateType.toLowerCase())
     )
@@ -107,8 +100,7 @@ export class LinearClient {
    * Fetch candidate issues for dispatch from the default project
    */
   async fetchCandidateIssues(): Promise<NormalizedIssue[]> {
-    const snapshot = await this.fetchCandidateSnapshot()
-    return snapshot.issues
+    return this.fetchCandidateIssuesForSlugs([this.projectSlug])
   }
 
   /**
@@ -116,54 +108,23 @@ export class LinearClient {
    * Each issue is tagged with its projectSlug for routing.
    */
   async fetchCandidateIssuesForSlugs(slugs: string[]): Promise<NormalizedIssue[]> {
-    const snapshot = await this.fetchCandidateSnapshotForSlugs(slugs)
-    return snapshot.issues
-  }
-
-  /**
-   * Fetch candidate issues plus state-type filtering diagnostics.
-   */
-  async fetchCandidateSnapshot(): Promise<CandidateIssueSnapshot> {
-    return this.fetchCandidateSnapshotForSlugs([this.projectSlug])
-  }
-
-  /**
-   * Fetch candidate issues from multiple projects plus state-type filtering diagnostics.
-   */
-  async fetchCandidateSnapshotForSlugs(slugs: string[]): Promise<CandidateIssueSnapshot> {
     const results = await Promise.all(
       slugs.map(slug => this.fetchIssuesForSlug(slug))
     )
-
-    return {
-      issues: sortIssuesForDispatch(results.flatMap(result => result.issues)),
-      filteredByStateType: results.reduce((sum, result) => sum + result.filteredByStateType, 0),
-    }
+    return sortIssuesForDispatch(results.flat())
   }
 
-  /**
-   * Fetch issues for a single project slug
-   */
-  private async fetchIssuesForSlug(slug: string): Promise<CandidateIssueSnapshot> {
+  private async fetchIssuesForSlug(slug: string): Promise<NormalizedIssue[]> {
     const data = await this.query<{
       issues: {
         nodes: LinearIssue[]
       }
     }>(FETCH_PROJECT_ISSUES, {
       projectSlug: slug,
-      states: this.activeStates,
+      stateTypes: [...this.dispatchableStateTypes],
     })
 
-    const normalizedIssues = data.issues.nodes.map(raw => normalizeIssue(raw, slug))
-    const issues = normalizedIssues.filter(issue => this.isDispatchableIssue(issue.stateType))
-    return {
-      issues: sortIssuesForDispatch(issues),
-      filteredByStateType: normalizedIssues.length - issues.length,
-    }
-  }
-
-  private isDispatchableIssue(stateType: string): boolean {
-    return this.isDispatchableStateType(stateType)
+    return sortIssuesForDispatch(data.issues.nodes.map(raw => normalizeIssue(raw, slug)))
   }
 
   /**
@@ -380,10 +341,4 @@ export class LinearClient {
     )
   }
 
-  /**
-   * Check whether a Linear workflow type is eligible for dispatch.
-   */
-  isDispatchableStateType(stateType: string): boolean {
-    return this.dispatchableStateTypes.has(stateType.toLowerCase())
-  }
 }

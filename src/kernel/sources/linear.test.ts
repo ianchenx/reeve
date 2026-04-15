@@ -7,7 +7,6 @@ const LINEAR_CONFIG = {
   apiKey: "lin_api_test",
   projectSlug: "test-project",
   teamKey: "TEST",
-  activeStates: ["Todo", "In Progress"],
   dispatchableStateTypes: ["unstarted", "started"],
   terminalStates: ["Done", "Cancelled"],
   stateNames: {

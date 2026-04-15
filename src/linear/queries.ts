@@ -2,11 +2,11 @@
 // Uses top-level `issues` queries to stay under complexity limits
 
 export const FETCH_PROJECT_ISSUES = `
-  query FetchProjectIssues($projectSlug: String!, $states: [String!]) {
+  query FetchProjectIssues($projectSlug: String!, $stateTypes: [String!]) {
     issues(
       filter: {
         project: { slugId: { eq: $projectSlug } }
-        state: { name: { in: $states } }
+        state: { type: { in: $stateTypes } }
       }
       first: 50
       orderBy: updatedAt

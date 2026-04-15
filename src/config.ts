@@ -9,7 +9,6 @@ export interface LinearConfig {
   apiKey: string
   projectSlug: string
   teamKey: string
-  activeStates: string[]
   dispatchableStateTypes: string[]
   terminalStates: string[]
   stateNames: {
@@ -123,7 +122,6 @@ const LINEAR_DEFAULTS: LinearConfig = {
   apiKey: "",
   projectSlug: "",
   teamKey: "",
-  activeStates: ["Todo", "In Progress"],
   dispatchableStateTypes: ["unstarted", "started"],
   terminalStates: ["Done", "Cancelled"],
   stateNames: {
