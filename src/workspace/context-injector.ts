@@ -103,7 +103,7 @@ Template:
 \`\`\`markdown
 ## Reeve Workpad
 
-<hostname>:<abs-workdir>@<short-sha>
+@<short-sha>
 
 ### Plan
 - [ ] 1. (derive from issue)
