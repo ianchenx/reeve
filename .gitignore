@@ -9,3 +9,6 @@ dashboard/dist/
 
 .DS_Store
 .claude/
+*.tgz
+test-logs/
+HANDOFF.md

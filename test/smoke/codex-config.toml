@@ -1,0 +1,4 @@
+# Isolated Codex config for E2E tests.
+# CODEX_HOME points here to prevent user skills/config from leaking.
+# Override model/provider as needed for your environment.
+model = "gpt-5.4"

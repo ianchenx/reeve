@@ -1,0 +1,21 @@
+{
+  "$comment": "Copy to ~/.reeve-test/settings.json and fill in real values",
+  "linearApiKey": "lin_api_xxx_your_test_team_key",
+  "defaultAgent": "claude",
+  "workspace": {
+    "root": "/tmp/reeve-test-workspace"
+  },
+  "dashboard": {
+    "port": 14501
+  },
+  "projects": [
+    {
+      "team": "SMOKE",
+      "linear": "your-project-slug",
+      "repo": "ianchenx/reeve-test-sandbox",
+      "baseBranch": "main",
+      "agent": "claude",
+      "post": { "review": "claude" }
+    }
+  ]
+}

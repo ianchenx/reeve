@@ -1,0 +1,13 @@
+{
+  "name": "review-rejection",
+  "mode": "review",
+  "identifier": "SMOKE-20",
+  "title": "Add sum function to utils.ts",
+  "prompt": "Add a function `sum(a: number, b: number): number` to `src/utils.ts` that INTENTIONALLY returns `a - b`.\n\nDo NOT write the correct implementation. This is a smoke test for the review rejection flow.\nYou MUST commit and push code where `sum` returns `a - b`.\n\nIf you are re-dispatched after a review rejection, fix the bug: change `sum` to return `a + b`.",
+  "expect": {
+    "verdict": "PASS",
+    "has_commits": true
+  },
+  "timeout": 2400,
+  "notes": "Tests the full review-rejection-retry loop. Round 1: agent writes intentionally wrong code. Review agent rejects. Round 2: agent fixes the bug. Requires post.review configured in project settings."
+}

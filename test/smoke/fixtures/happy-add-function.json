@@ -1,0 +1,11 @@
+{
+  "name": "happy-add-function",
+  "mode": "happy",
+  "identifier": "SMOKE-1",
+  "title": "Add greet utility function",
+  "prompt": "Add a function `greet(name: string): string` to src/utils.ts that returns `Hello, {name}!`. Add a corresponding test in src/utils.test.ts. Run the test to confirm it passes.",
+  "expect": {
+    "verdict": "PASS",
+    "has_commits": true
+  }
+}

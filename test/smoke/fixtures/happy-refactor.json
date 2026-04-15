@@ -1,0 +1,11 @@
+{
+  "name": "happy-refactor",
+  "mode": "happy",
+  "identifier": "SMOKE-3",
+  "title": "Extract validation logic into shared module",
+  "prompt": "src/handlers/create.ts and src/handlers/update.ts both have identical email validation logic (regex check + domain lookup). Extract this into src/validation.ts as `validateEmail(email: string): { valid: boolean; reason?: string }`. Update both handlers to import from the shared module. Ensure existing tests still pass.",
+  "expect": {
+    "verdict": "PASS",
+    "has_commits": true
+  }
+}
