@@ -310,6 +310,48 @@ describe("projects actions", () => {
     expect(data.configured).toBe(true)
   })
 
+  test("projectImport surfaces missing workflow states when Linear rejects creation", async () => {
+    const homeDir = createTempHome()
+    process.env.HOME = homeDir
+    writeSettings(homeDir, { linearApiKey: "lin_api_test" })
+
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const body = typeof init?.body === "string" ? init.body : ""
+      if (body.includes("teams")) {
+        return new Response(JSON.stringify({
+          data: { teams: { nodes: [{ id: "team-1", key: "WOR", name: "Workflows" }] } },
+        }))
+      }
+      if (body.includes("team(id:")) {
+        return new Response(JSON.stringify({
+          data: { team: { states: { nodes: [
+            { id: "s1", name: "Todo", type: "unstarted" },
+            { id: "s2", name: "In Progress", type: "started" },
+          ] } } },
+        }))
+      }
+      if (body.includes("workflowStateCreate")) {
+        return new Response(JSON.stringify({
+          data: { workflowStateCreate: { success: false, workflowState: null } },
+        }))
+      }
+      return new Response(JSON.stringify({ data: {} }))
+    }) as typeof fetch
+
+    const result = await executeAction(createCtx(), "projectImport", {
+      repo: "ian/demo",
+      slug: "proj-1",
+      team: "WOR",
+      baseBranch: "main",
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const data = result.data as { ok: boolean; slug: string; missingStates?: Array<{ name: string; error?: string }> }
+    expect(data.missingStates?.map(m => m.name) ?? []).toContain("In Review")
+  })
+
   test("setupSave does not persist an invalid Linear key", async () => {
     const homeDir = createTempHome()
     process.env.HOME = homeDir

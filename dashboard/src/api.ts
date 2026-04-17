@@ -185,7 +185,14 @@ export interface ImportData {
   post?: Record<string, string>
 }
 
-export async function importProject(data: ImportData): Promise<{ ok: boolean; error?: string }> {
+export interface ImportResult {
+  ok: boolean
+  error?: string
+  slug?: string
+  missingStates?: Array<{ name: string; error?: string }>
+}
+
+export async function importProject(data: ImportData): Promise<ImportResult> {
   const res = await authFetch(`${BASE}/api/projects/import`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

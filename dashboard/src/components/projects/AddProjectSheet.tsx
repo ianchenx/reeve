@@ -230,8 +230,13 @@ export function AddProjectSheet({ open, onOpenChange, onAdded }: AddProjectSheet
       })
       if (result.ok) {
         onAdded()
-        onOpenChange(false)
-        reset()
+        if (result.missingStates?.length) {
+          const names = result.missingStates.map(m => m.name).join(", ")
+          setError(`Project imported, but Linear workflow states could not be created: ${names}. Create them manually in Linear, then retry.`)
+        } else {
+          onOpenChange(false)
+          reset()
+        }
       } else {
         setError(result.error ?? "Import failed")
       }
