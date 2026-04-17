@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test"
 import { mkdirSync, rmSync, writeFileSync } from "fs"
 import { resolve } from "path"
-import { readUpdateCache, isUpdateCheckDisabled, hasNewerVersion, getCurrentVersion, isCacheStale } from "./update-check"
+import { readUpdateCache, isUpdateCheckDisabled, hasNewerVersion, getCurrentVersion, isCacheStale, shouldShowUpdateHint } from "./update-check"
 
 const TEST_DIR = resolve(process.cwd(), ".test-tmp", `update-check-${Date.now()}`)
 const ORIGINAL_REEVE_DIR = process.env.REEVE_DIR
@@ -87,6 +87,27 @@ describe("getCurrentVersion", () => {
   it("returns a semver string from package.json", () => {
     const v = getCurrentVersion()
     expect(v).toMatch(/^\d+\.\d+\.\d+/)
+  })
+})
+
+describe("shouldShowUpdateHint", () => {
+  it("returns false when cache is null", () => {
+    expect(shouldShowUpdateHint("0.1.0", null)).toBe(false)
+  })
+
+  it("returns true when running version is older than cached latest", () => {
+    const cache = { lastCheck: "2026-04-17T00:00:00Z", latest: "0.2.0", current: "0.1.0" }
+    expect(shouldShowUpdateHint("0.1.0", cache)).toBe(true)
+  })
+
+  it("returns false after upgrade even if cached current is stale", () => {
+    const cache = { lastCheck: "2026-04-17T00:00:00Z", latest: "0.2.0", current: "0.1.0" }
+    expect(shouldShowUpdateHint("0.2.0", cache)).toBe(false)
+  })
+
+  it("returns false when running version is newer than cached latest", () => {
+    const cache = { lastCheck: "2026-04-17T00:00:00Z", latest: "0.2.0", current: "0.1.0" }
+    expect(shouldShowUpdateHint("0.3.0", cache)).toBe(false)
   })
 })
 

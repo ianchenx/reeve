@@ -54,6 +54,16 @@ export function hasNewerVersion(current: string, latest: string): boolean {
   return false
 }
 
+/**
+ * Whether to show the "new version available" hint.
+ * Compares the running version against cache.latest — cache.current
+ * reflects the version at last check and goes stale after upgrade.
+ */
+export function shouldShowUpdateHint(runningVersion: string, cache: UpdateCache | null): boolean {
+  if (!cache) return false
+  return hasNewerVersion(runningVersion, cache.latest)
+}
+
 /** Resolve current package version from package.json. */
 export function getCurrentVersion(): string {
   try {
