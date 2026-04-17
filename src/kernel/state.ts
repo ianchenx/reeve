@@ -74,15 +74,20 @@ export class StateStore {
 
   /** Load tasks from disk. Falls back to .bak if primary is corrupt. Returns count loaded. */
   load(): number {
+    const attempted: string[] = []
     for (const candidate of [this.path, this.path + ".bak"]) {
       if (!existsSync(candidate)) continue
+      attempted.push(candidate)
       try {
         const raw = JSON.parse(readFileSync(candidate, "utf-8"))
         const parsed = stateFileSchema.safeParse(raw)
 
         if (!parsed.success) {
-          const issues = parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; ")
-          console.warn(`[state] Schema validation failed for ${candidate}: ${issues}`)
+          const issues = parsed.error.issues.map(i => {
+            const loc = i.path.length ? i.path.join(".") + ": " : ""
+            return loc + i.message
+          }).join("; ")
+          console.warn(`[state] schema validation failed for ${candidate}: ${issues} — trying next candidate`)
           continue
         }
 
@@ -90,18 +95,17 @@ export class StateStore {
         for (const task of parsed.data.tasks as Task[]) {
           // State migration: redispatch → active
           if ((task.state as string) === "redispatch") {
-            console.warn(`[state] Migrating task ${task.identifier} from redispatch → active`)
             task.state = "active"
           }
           this.tasks.set(task.id, task)
         }
-        if (candidate !== this.path) {
-          console.warn(`[state] Recovered from backup: ${candidate}`)
-        }
         return this.tasks.size
       } catch (err) {
-        console.warn(`[state] Failed to load ${candidate}:`, err)
+        console.warn(`[state] failed to read ${candidate}: ${err instanceof Error ? err.message : String(err)} — trying next candidate`)
       }
+    }
+    if (attempted.length > 0) {
+      console.warn(`[state] all candidates failed (${attempted.join(", ")}); starting with empty task list`)
     }
     return 0
   }

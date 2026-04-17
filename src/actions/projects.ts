@@ -359,8 +359,13 @@ registerAction({
     // Ensure workflow states exist
     if (apiKey && teamFixture) {
       try {
-        await ensureWorkflowStates(apiKey, teamFixture)
-      } catch { /* non-fatal */ }
+        const result = await ensureWorkflowStates(apiKey, teamFixture)
+        for (const m of result.missing) {
+          console.warn(`[projects] could not ensure workflow state "${m.name}" on team ${teamFixture.key}: ${m.error}`)
+        }
+      } catch (err) {
+        console.warn(`[projects] failed to ensure workflow states on team ${teamFixture.key}: ${err instanceof Error ? err.message : String(err)}`)
+      }
     }
 
     return { ok: true, slug: projectSlug }

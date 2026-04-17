@@ -420,14 +420,32 @@ export class Kernel {
         // Resolve agent name
         const resolvedAgent = project?.agent ?? task.agent ?? this.kernelConfig.agentDefault;
 
-        // Project setup (runs in the code directory)
+        // Project setup — user-supplied shell, a system boundary.
+        // Failures surface to stderr but don't abort dispatch.
         if (project?.setup) {
           const proc = Bun.spawn(['bash', '-c', project.setup], {
             cwd: info.worktreeDir,
-            stdout: 'inherit',
-            stderr: 'inherit',
+            stdout: 'pipe',
+            stderr: 'pipe',
           });
-          await proc.exited;
+          const [stdout, stderr, exitCode] = await Promise.all([
+            new Response(proc.stdout).text(),
+            new Response(proc.stderr).text(),
+            proc.exited,
+          ]);
+          if (exitCode !== 0) {
+            const tail = (stderr || stdout).split('\n').slice(-5).join('\n').trim();
+            console.error(
+              `[kernel] project.setup exited ${exitCode} for ${task.identifier} (cwd=${info.worktreeDir})${tail ? `\n  ${tail.replace(/\n/g, '\n  ')}` : ''}`,
+            );
+            // Don't persist output to session.jsonl — user scripts may leak secrets via stderr.
+            // Byte counts are safe and let operators triage "silent failure" vs "noisy failure".
+            this.log.event(task.id, task.identifier, 'project_setup_failed', {
+              exitCode,
+              stderrBytes: stderr.length,
+              stdoutBytes: stdout.length,
+            });
+          }
         }
 
         // Notify source
@@ -575,7 +593,11 @@ export class Kernel {
 
         // passive, unknown → wait
       } catch (err) {
-        console.warn(`[kernel] reconcile error for ${task.identifier}:`, err);
+        // warn — transient errors retry next tick; persistent ones (revoked key,
+        // etc.) would otherwise leave tasks silently stuck in `published`.
+        console.warn(
+          `[kernel] reconcile failed for ${task.identifier}: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
   }

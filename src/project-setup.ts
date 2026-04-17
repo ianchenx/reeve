@@ -200,10 +200,17 @@ const REQUIRED_STATES = [
   { name: "In Review", type: "started" },
 ] as const
 
+export interface EnsureWorkflowStatesResult {
+  created: string[]
+  /** Required states that could not be confirmed as present (neither found nor successfully created). */
+  missing: { name: string; error: string }[]
+}
+
 /**
  * Ensure required workflow states exist in the team.
+ * Reports any required state that is neither already present nor successfully created.
  */
-export async function ensureWorkflowStates(apiKey: string, team: TeamFixture): Promise<string[]> {
+export async function ensureWorkflowStates(apiKey: string, team: TeamFixture): Promise<EnsureWorkflowStatesResult> {
   const data = await linearGQL(apiKey, `
     query ($teamId: String!) {
       team(id: $teamId) { states { nodes { id name type } } }
@@ -212,6 +219,7 @@ export async function ensureWorkflowStates(apiKey: string, team: TeamFixture): P
 
   const states = data.team.states.nodes
   const created: string[] = []
+  const missing: { name: string; error: string }[] = []
 
   for (const req of REQUIRED_STATES) {
     const found = states.find(s => s.name.toLowerCase() === req.name.toLowerCase())
@@ -225,9 +233,9 @@ export async function ensureWorkflowStates(apiKey: string, team: TeamFixture): P
       `, { input: { teamId: team.id, name: req.name, type: req.type, color: "#95a2b3" } })
       created.push(req.name)
     } catch (err) {
-      console.error(`[project-setup] Failed to create state ${req.name}:`, err)
+      missing.push({ name: req.name, error: err instanceof Error ? err.message : String(err) })
     }
   }
 
-  return created
+  return { created, missing }
 }

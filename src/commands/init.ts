@@ -88,7 +88,13 @@ export async function cmdInit(): Promise<void> {
     team = choice as TeamFixture
   }
 
-  await ensureWorkflowStates(apiKey, team)
+  const result = await ensureWorkflowStates(apiKey, team)
+  if (result.missing.length > 0) {
+    for (const m of result.missing) {
+      p.log.warn(`Could not ensure workflow state "${m.name}": ${m.error}`)
+    }
+    p.log.warn(`Reeve needs the above state${result.missing.length > 1 ? "s" : ""} on team ${team.key}. Create ${result.missing.length > 1 ? "them" : "it"} manually in Linear or re-run with an admin API key.`)
+  }
 
   settings.defaultTeam = team.key
   saveSettings(settings)
