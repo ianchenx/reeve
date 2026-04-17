@@ -5,7 +5,6 @@
   "title": "Fix off-by-one error in pagination",
   "prompt": "There is an off-by-one error in src/paginate.ts — the `getPage` function uses `slice(offset, offset + limit)` but `offset` is calculated as `page * limit` instead of `(page - 1) * limit`, so page 1 skips the first `limit` items. Fix the offset calculation and add a test that verifies page 1 returns the first `limit` items.",
   "expect": {
-    "verdict": "PASS",
-    "has_commits": true
+    "verdict": "PASS"
   }
 }

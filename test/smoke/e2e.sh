@@ -216,6 +216,10 @@ run_fixture() {
   local pr_url
   pr_url=$(echo "$task_detail" | jq -r '.prUrl // empty' 2>/dev/null)
 
+  local retry_count
+  retry_count=$(echo "$task_detail" | jq -r '.retryCount // 0' 2>/dev/null)
+  retry_count="${retry_count:-0}"
+
   if [ "$state" != "done" ]; then
     result="TIMEOUT"
     log "  TIMEOUT after ${fixture_timeout}s (last state: $state)"
@@ -228,6 +232,12 @@ run_fixture() {
   else
     result="FAIL"
     log "  FAIL (expected=$expect_verdict got=$done_reason)"
+  fi
+
+  # Review-mode fixtures must have retried at least once
+  if [ "$result" = "PASS" ] && [ "$mode" = "review" ] && [ "$retry_count" -lt 1 ]; then
+    result="FAIL"
+    log "  FAIL (review fixture expected retryCount>=1 but got $retry_count)"
   fi
 
   # Log details
