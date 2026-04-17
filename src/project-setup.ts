@@ -226,12 +226,16 @@ export async function ensureWorkflowStates(apiKey: string, team: TeamFixture): P
     if (found) continue
 
     try {
-      await linearGQL(apiKey, `
+      const res = await linearGQL(apiKey, `
         mutation CreateWorkflowState($input: WorkflowStateCreateInput!) {
           workflowStateCreate(input: $input) { success workflowState { id name type } }
         }
-      `, { input: { teamId: team.id, name: req.name, type: req.type, color: "#95a2b3" } })
-      created.push(req.name)
+      `, { input: { teamId: team.id, name: req.name, type: req.type, color: "#95a2b3" } }) as { workflowStateCreate?: { success?: boolean } }
+      if (res?.workflowStateCreate?.success) {
+        created.push(req.name)
+      } else {
+        missing.push({ name: req.name, error: "Linear rejected workflowStateCreate (success=false)" })
+      }
     } catch (err) {
       missing.push({ name: req.name, error: err instanceof Error ? err.message : String(err) })
     }
