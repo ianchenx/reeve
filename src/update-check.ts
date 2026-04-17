@@ -70,7 +70,7 @@ export async function checkForUpdate(): Promise<void> {
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 5_000)
-    const res = await fetch("https://registry.npmjs.org/reeve/latest", {
+    const res = await fetch("https://registry.npmjs.org/reeve-ai/latest", {
       signal: controller.signal,
     })
     clearTimeout(timeout)
