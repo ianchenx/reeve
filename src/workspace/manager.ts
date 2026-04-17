@@ -52,7 +52,6 @@ export class WorkspaceManager {
    * Fetch latest from origin for a specific repo.
    */
   async fetchLatest(repoDir: string): Promise<void> {
-    ;(console.info as (...args: unknown[]) => void)({ repoDir }, "Fetching latest from origin")
     await this.execInOrThrow(repoDir, ["git", "fetch", "origin"])
   }
 
@@ -87,7 +86,6 @@ export class WorkspaceManager {
 
     // Reuse existing worktree if requested (retry/continuation path)
     if (reuse && existsSync(worktreeDir)) {
-      ;(console.info as (...args: unknown[]) => void)({ taskRoot, worktreeDir }, "Reusing existing worktree")
       // Clean slate for retry/continuation
       await this.execInOrThrow(worktreeDir, ["git", "reset", "--hard"])
       await this.execInOrThrow(worktreeDir, ["git", "clean", "-fd"])
@@ -106,7 +104,6 @@ export class WorkspaceManager {
 
     // Remove stale worktree if exists
     if (existsSync(worktreeDir)) {
-      ;(console.info as (...args: unknown[]) => void)({ worktreeDir }, "Removing stale worktree")
       await this.execInOrThrow(repoDir, ["git", "worktree", "remove", "--force", worktreeDir])
     }
 
@@ -123,7 +120,6 @@ export class WorkspaceManager {
     await this.execInOrThrow(
       repoDir,
       ["git", "worktree", "add", worktreeDir, "-b", branch, `origin/${baseBranch}`],
-      { inherit: true }
     )
 
     // Write .git/info/exclude to keep agent artifacts out of git status.
@@ -135,8 +131,6 @@ export class WorkspaceManager {
     setupAgentContext(implementDir, buildAgentRules(repoName))
     const repoLink = resolve(implementDir, repoName)
     try { lstatSync(repoLink) } catch { symlinkSync(worktreeDir, repoLink) }
-
-    ;(console.info as (...args: unknown[]) => void)({ taskRoot, implementDir, worktreeDir }, "Created task with implement agent dir")
 
     return {
       identifier,
@@ -161,7 +155,6 @@ export class WorkspaceManager {
     // Remove git worktree first
     if (existsSync(worktreeDir)) {
       await this.execInOrThrow(repoDir, ["git", "worktree", "remove", "--force", worktreeDir])
-      ;(console.info as (...args: unknown[]) => void)({ worktreeDir }, "Removed worktree")
     } else {
       await this.execInOrThrow(repoDir, ["git", "worktree", "prune"])
     }
@@ -191,7 +184,6 @@ export class WorkspaceManager {
 
     if (existsSync(worktreeDir)) {
       await this.execInOrThrow(repoDir, ["git", "worktree", "remove", "--force", worktreeDir])
-      ;(console.info as (...args: unknown[]) => void)({ worktreeDir }, "Cleaned worktree (logs preserved)")
     } else {
       await this.execInOrThrow(repoDir, ["git", "worktree", "prune"])
     }
@@ -238,8 +230,7 @@ export class WorkspaceManager {
       .filter(name => {
         try {
           return statSync(resolve(root, name)).isDirectory()
-        } catch (err) {
-          ;(console.warn as (...args: unknown[]) => void)({ err, path: resolve(root, name) }, "Cannot stat path")
+        } catch {
           return false
         }
       })
@@ -250,16 +241,14 @@ export class WorkspaceManager {
         const dotGit = resolve(worktreeDir, ".git")
         try {
           if (!existsSync(dotGit) || !statSync(dotGit).isFile()) return []
-        } catch (err) {
-          ;(console.warn as (...args: unknown[]) => void)({ err, worktreeDir }, "Cannot stat .git in worktree")
+        } catch {
           return []
         }
 
         let raw: string
         try {
           raw = readFileSync(dotGit, "utf-8").trim()
-        } catch (err) {
-          ;(console.warn as (...args: unknown[]) => void)({ err, worktreeDir }, "Cannot read .git file in worktree")
+        } catch {
           return []
         }
 
@@ -301,9 +290,8 @@ export class WorkspaceManager {
         try {
           await this.removeForTask(entry.identifier, entry.repoDir)
           removed.push(entry.identifier)
-          console.log(`[workspace] Removed orphan worktree: ${entry.identifier}`)
-        } catch (err) {
-          console.warn(`[workspace] Failed to remove orphan ${entry.identifier}:`, err)
+        } catch {
+          // non-critical — orphan cleanup is best-effort
         }
       }
     }
@@ -398,8 +386,7 @@ export class WorkspaceManager {
     }
 
     if (exitCode !== 0) {
-      const detail = (stderr || stdout).trim()
-      ;(console.warn as (...args: unknown[]) => void)({ command: args.join(" "), detail }, "Command failed")
+      // caller handles failure via execInOrThrow or checks exitCode
     }
 
     return { exitCode, stdout, stderr }

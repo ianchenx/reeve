@@ -5,11 +5,11 @@
 # ── Quick Start ──────────────────────────────────────
 
 run:                    ## Start in foreground (Ctrl+C to stop)
-	cd dashboard && bun run build
+	@cd dashboard && bun run build > /dev/null 2>&1
 	bun run src/cli/app.ts run
 
 start:                  ## Start daemon in background
-	cd dashboard && bun run build
+	@cd dashboard && bun run build > /dev/null 2>&1
 	bun run src/cli/app.ts start
 
 stop:                   ## Stop background daemon

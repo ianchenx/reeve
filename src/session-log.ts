@@ -21,8 +21,8 @@ export function parseSessionNdjson(raw: string, source: string, maxLines = 2000)
 
     try {
       events.push(JSON.parse(line))
-    } catch (err) {
-      console.warn(`[session-log] Skipping invalid JSON line ${index + 1} in ${source}:`, err)
+    } catch {
+      // skip invalid JSON lines silently
     }
   }
 

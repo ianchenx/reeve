@@ -62,7 +62,6 @@ export async function runPostAgents(
     const agentDir = prepareAgentDir(agent, taskRoot, task.worktree!, repoName)
 
     const agentOverride = postConfig?.[agent.name]
-    console.log(`[post-agent] Running ${agent.name} for ${task.identifier} in ${agentDir}`)
     const agentResult = await spawnFn(task, agentDir, prompt, config, agentOverride)
 
     const result: PostAgentResult = { agent: agent.name, exitCode: agentResult.exitCode }

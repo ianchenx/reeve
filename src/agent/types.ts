@@ -82,3 +82,9 @@ export type RunnerLogger = {
   warn: (...args: unknown[]) => void;
   error: (...args: unknown[]) => void;
 };
+
+export const noopLogger: RunnerLogger = {
+  info() {},
+  warn() {},
+  error() {},
+};

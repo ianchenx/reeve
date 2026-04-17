@@ -27,6 +27,7 @@ import {
 import { mapCodexNotification } from './codex-mapper';
 import { prepareCodexSandbox } from './codex-sandbox';
 import { collectStderr, killProcessTree } from './process-utils';
+import { noopLogger } from './types';
 import type {
   AgentEventHandler,
   AgentTask,
@@ -103,7 +104,7 @@ export const codexBackend: AgentBackend = {
     onEvent: AgentEventHandler,
     options: SpawnOptions,
   ): Promise<SpawnResult> {
-    const log: RunnerLogger = console as RunnerLogger;
+    const log = noopLogger;
     const stderrBuffer = { text: '' };
 
     const sessionLogPath = resolve(options.logDir, 'session.ndjson');

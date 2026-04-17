@@ -1,6 +1,7 @@
 // banner.ts — Animated startup banner for `reeve run`
 import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
+import { readUpdateCache, hasNewerVersion } from '../update-check';
 
 const REEVE_ROOT = resolve(dirname(new URL(import.meta.url).pathname), '../..');
 
@@ -99,11 +100,17 @@ export async function printAnimatedBanner(info: {
   }
 
   // Status box
-  const lines: string[] = [
-    `${BOLD}reeve${RESET} v${info.version}`,
-    '',
-    `Watching  ${info.repos}`,
-  ];
+  const lines: string[] = [];
+
+  const cache = readUpdateCache();
+  if (cache && hasNewerVersion(cache.current, cache.latest)) {
+    lines.push(`${BOLD}reeve${RESET} v${info.version} ${DIM}→ ${cache.latest} available${RESET}`);
+  } else {
+    lines.push(`${BOLD}reeve${RESET} v${info.version}`);
+  }
+
+  lines.push('');
+  lines.push(`Watching  ${info.repos}`);
   if (info.dashboardUrl) {
     lines.push(`Dashboard ${info.dashboardUrl}`);
   }

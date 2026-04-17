@@ -143,8 +143,7 @@ export class Kernel {
 
   async start(): Promise<void> {
     this.running = true;
-    const loaded = this.store.load();
-    console.log(`[kernel] Loaded ${loaded} tasks from state`);
+    this.store.load();
 
     // Resolve GitHub identifiers (org/repo) to local filesystem paths.
     // This may clone repos on demand if they're not found locally.
@@ -152,10 +151,6 @@ export class Kernel {
 
     await this.recover();
     await this.cleanOrphans();
-
-    console.log(
-      `[kernel] Started — polling every ${this.kernelConfig.pollIntervalMs}ms`,
-    );
     await this.tick();
     this.scheduleNext();
 
@@ -219,9 +214,6 @@ export class Kernel {
       // queued → no-op
     }
 
-    if (recovered > 0) {
-      console.log(`[kernel] Recovered ${recovered} task(s)`);
-    }
   }
 
   /** Remove orphan worktrees that don't belong to any active task. */
@@ -232,16 +224,12 @@ export class Kernel {
         activeIdentifiers.add(sanitizeTaskIdentifier(task.identifier));
       }
     }
-    const removed = await this.workspace.cleanOrphans(activeIdentifiers);
-    if (removed.length > 0) {
-      console.log(`[kernel] Cleaned ${removed.length} orphan worktree(s)`);
-    }
+    await this.workspace.cleanOrphans(activeIdentifiers);
   }
 
   stop(): void {
     this.running = false;
     if (this.timer) clearTimeout(this.timer);
-    console.log('[kernel] Stopped');
   }
 
   /**
@@ -256,9 +244,6 @@ export class Kernel {
     this.log.event('', '', 'graceful_shutdown', {
       activeHandles: this.handles.size,
     });
-    console.log(
-      `[kernel] Graceful shutdown — killing ${this.handles.size} agent(s)...`,
-    );
 
     // Send SIGTERM to all active agents
     for (const [taskId, handle] of this.handles) {
@@ -270,8 +255,8 @@ export class Kernel {
 
     // Wait for agents to exit (with timeout)
     if (this.handles.size > 0) {
-      const exitPromises = Array.from(this.handles.entries()).map(
-        ([taskId, handle]) => handle.done.catch(() => {}),
+      const exitPromises = Array.from(this.handles.values()).map(
+        (handle) => handle.done.catch(() => {}),
       );
       await Promise.race([
         Promise.allSettled(exitPromises),
@@ -281,7 +266,17 @@ export class Kernel {
 
     // Persist final state
     this.store.save();
-    console.log('[kernel] Shutdown complete — state saved');
+  }
+
+  /**
+   * Synchronous force-exit: kill all agents without waiting, persist state.
+   * Used on double-SIGINT when graceful shutdown is already in progress.
+   */
+  forceShutdown(): void {
+    for (const [, handle] of this.handles) {
+      try { killAgent(handle.pid); } catch {}
+    }
+    this.store.save();
   }
 
   // ── Main loop ────────────────────────────────────────────
@@ -332,7 +327,6 @@ export class Kernel {
           existing.retryCount = 0;
           existing.updatedAt = new Date().toISOString();
           this.store.save();
-          console.log(`[kernel] Revived failed task ${existing.identifier}`);
           this.log.event(existing.id, existing.identifier, 'revive_failed', {});
         }
         continue;
@@ -428,7 +422,6 @@ export class Kernel {
 
         // Project setup (runs in the code directory)
         if (project?.setup) {
-          console.log(`[kernel] setup: ${project.setup}`);
           const proc = Bun.spawn(['bash', '-c', project.setup], {
             cwd: info.worktreeDir,
             stdout: 'inherit',
@@ -444,6 +437,7 @@ export class Kernel {
         task.startedAt = new Date().toISOString();
         task.lastOutputAt = task.startedAt;
         task.stage = 'implement';
+        this.emit({ type: 'dispatching', task, data: { agent: resolvedAgent } });
         await this.spawnAndAttach(task, resolvedAgent, task.retryCount + 1);
         await this.transition(task, 'active');
       } catch (err) {
@@ -485,7 +479,7 @@ export class Kernel {
         task.prUrl = await this.source.detectPrUrl?.(task.worktree);
         if (task.prUrl) {
           this.store.save();
-          console.log(`[kernel] Detected PR: ${task.prUrl}`);
+          this.emit({ type: 'pr_detected', task, data: { prUrl: task.prUrl } });
         }
       }
 
@@ -497,17 +491,20 @@ export class Kernel {
         const { resolvePostAgents, runPostAgents } = await import('./post-agent/index')
         const { spawnForPostAgent } = await import('./agent')
         const agents = resolvePostAgents(postNames)
+        this.emit({ type: 'post_agent_start', task, data: { agents: postNames } });
         const chainResult = await runPostAgents(
           task, this.config, agents, spawnForPostAgent, postConfig
         )
 
         if (chainResult.verdict === "fail") {
           const reason = `post-agent ${chainResult.failedAt} failed`
+          this.emit({ type: 'post_agent_result', task, data: { verdict: 'fail', agent: chainResult.failedAt } });
           this.log.event(taskId, task.identifier, 'gate_failed', { reason })
           enrichMeta(task, result, reason)
           syncHistoryIndexForTask(sanitizeTaskIdentifier(task.identifier))
           return this.retryOrFail(task, reason)
         }
+        this.emit({ type: 'post_agent_result', task, data: { verdict: 'pass', agents: chainResult.results.map(r => r.agent) } });
         this.log.event(taskId, task.identifier, 'post_agents_passed', {
           agents: chainResult.results.map(r => r.agent),
         })
@@ -533,7 +530,7 @@ export class Kernel {
         task.prUrl = await this.source.detectPrUrl?.(task.worktree);
         if (task.prUrl) {
           this.store.save();
-          console.log(`[kernel] Detected PR: ${task.prUrl}`);
+          this.emit({ type: 'pr_detected', task, data: { prUrl: task.prUrl } });
         }
       }
       return this.transition(task, 'published');
@@ -569,7 +566,6 @@ export class Kernel {
           // If agent's last exit was passive (moved to In Review), and now it's
           // actionable again, a human moved it back → reset round counter
           if (task.lastExitDisposition === 'passive') {
-            console.log(`[kernel] Human re-dispatch detected for ${task.identifier} — resetting round counter`);
             task.round = 0;
           }
           this.log.event(task.id, task.identifier, 'reconcile_redispatch', { disposition });
@@ -688,9 +684,6 @@ export class Kernel {
           timeSinceOutputMs: timeSinceOutput,
           totalElapsedMs: totalElapsed,
         });
-        console.warn(
-          `[kernel] Stalled: ${task.identifier} (no output for ${Math.round(timeSinceOutput / 60000)}m)`,
-        );
         if (task.pid) killAgent(task.pid);
         this.transition(task, 'done', 'failed');
         continue;
@@ -701,9 +694,6 @@ export class Kernel {
         this.log.event(task.id, task.identifier, 'turn_timeout', {
           totalElapsedMs: totalElapsed,
         });
-        console.warn(
-          `[kernel] Turn timeout: ${task.identifier} (${Math.round(totalElapsed / 60000)}m total)`,
-        );
         if (task.pid) killAgent(task.pid);
         this.transition(task, 'done', 'failed');
       }
@@ -772,6 +762,7 @@ export class Kernel {
       if (detail) task.trace.detail = detail;
       const backoffMs = Math.min(60_000 * Math.pow(2, task.retryCount - 1), 600_000);
       task.retryAfter = new Date(Date.now() + backoffMs).toISOString();
+      this.emit({ type: 'retrying', task, data: { reason, maxRetries } });
       this.log.event(task.id, task.identifier, 'retry_scheduled', {
         retryCount: task.retryCount,
         maxRetries,
@@ -865,14 +856,12 @@ export class Kernel {
       throw new Error(`Project ${project.slug} already exists`);
     }
     this.config.projects.push(project as ProjectConfig);
-    console.log(`[kernel] Added project: ${project.slug} → ${project.repo}`);
   }
 
   updateProject(slug: string, changes: Partial<ProjectConfig>): boolean {
     const project = this.config.projects.find(p => p.slug === slug);
     if (!project) return false;
     Object.assign(project, changes);
-    console.log(`[kernel] Updated project: ${slug}`);
     return true;
   }
 
@@ -880,7 +869,6 @@ export class Kernel {
     const idx = this.config.projects.findIndex(p => p.slug === slug);
     if (idx === -1) return false;
     this.config.projects.splice(idx, 1);
-    console.log(`[kernel] Removed project: ${slug}`);
     return true;
   }
 }

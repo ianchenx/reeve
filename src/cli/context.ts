@@ -54,7 +54,14 @@ export async function runAction(
   }
 }
 
+let updateNotificationSuppressed = false
+
+export function suppressUpdateNotification(): void {
+  updateNotificationSuppressed = true
+}
+
 export function showUpdateNotification(json = false): void {
+  if (updateNotificationSuppressed) return
   if (isUpdateCheckDisabled()) return
   if (json) return
   if (!process.stderr.isTTY) return

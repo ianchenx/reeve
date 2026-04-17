@@ -20,15 +20,12 @@ export class LinearSource implements Source {
 
   async poll(): Promise<SourceItem[]> {
     const slugs = this.projects.map(p => p.slug)
-    console.log(`[linear-source] polling ${slugs.length} slugs`)
     const issues = await this.client.fetchCandidateIssuesForSlugs(slugs)
-    console.log(`[linear-source] got ${issues.length} candidate issues:`, issues.map(i => `${i.identifier}(${i.projectSlug})`).join(", "))
 
     const items: SourceItem[] = []
     for (const issue of issues) {
       const project = this.projects.find(p => p.slug === issue.projectSlug)
       if (!project) {
-        console.warn(`[linear-source] No project config for slug ${issue.projectSlug}, skipping ${issue.identifier}`)
         continue
       }
       const item: SourceItem = {

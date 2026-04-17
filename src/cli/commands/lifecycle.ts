@@ -178,6 +178,9 @@ async function cmdStart(): Promise<void> {
 }
 
 async function cmdRun(opts: { poll: boolean }): Promise<void> {
+  const { suppressUpdateNotification } = await import('../context')
+  suppressUpdateNotification()
+
   const noPoll = !opts.poll
 
   const config = loadConfig()
@@ -281,14 +284,25 @@ async function cmdRun(opts: { poll: boolean }): Promise<void> {
     startDashboardServer(config.dashboard.port, true)
   }
 
+  let stopRenderer: (() => void) | null = null
+  if (process.stdout.isTTY) {
+    const { createTTYRenderer } = await import('../../kernel/tty-renderer')
+    stopRenderer = createTTYRenderer((fn) => runtime.kernel.onSSE(fn))
+  }
+
   await printStartBanner(config)
   await runtime.kernel.start()
 
   let shuttingDown = false
   const graceful = async () => {
-    if (shuttingDown) return
+    if (shuttingDown) {
+      runtime.kernel.forceShutdown()
+      stopRenderer?.()
+      process.exit(1)
+    }
     shuttingDown = true
     await runtime.kernel.shutdown()
+    stopRenderer?.()
     removePid()
     process.exit(0)
   }

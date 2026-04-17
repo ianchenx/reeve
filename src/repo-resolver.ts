@@ -45,7 +45,6 @@ export async function resolveRepo(
   }
 
   // Clone on demand
-  console.log(`[repo-resolver] Cloning ${repo} → ${cachedPath}`)
   mkdirSync(resolve(reposRoot, repo.split("/")[0]), { recursive: true })
 
   const cloned = await cloneRepo(repo, cachedPath)
@@ -55,7 +54,6 @@ export async function resolveRepo(
       `Install 'gh', run 'gh auth login', and make sure git can reach GitHub.`
     )
   }
-  console.log(`[repo-resolver] Cloned ${repo}`)
   return cachedPath
 }
 
@@ -84,10 +82,6 @@ export async function resolveAllRepos(
   reposRoot: string,
 ): Promise<void> {
   for (const project of projects) {
-    const resolved = await resolveRepo(project.repo, reposRoot)
-    if (project.repo !== resolved) {
-      console.log(`[repo-resolver] ${project.repo} → ${resolved}`)
-    }
-    project.repo = resolved
+    project.repo = await resolveRepo(project.repo, reposRoot)
   }
 }

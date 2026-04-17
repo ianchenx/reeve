@@ -21,6 +21,7 @@ import type { AgentBackend } from './backend';
 import { claudeBackend } from './claude-backend';
 import { codexBackend } from './codex-backend';
 import { isProcessAlive, killProcessTree } from './process-utils';
+import { noopLogger } from './types';
 import type {
   AgentEventHandler,
   AgentTask,
@@ -42,7 +43,7 @@ export type {
 function archiveCurrentAttemptLogs(
   baseLogDir: string,
   nextAttempt: number,
-  log: RunnerLogger = console,
+  log: RunnerLogger = noopLogger,
 ): void {
   const metaPath = resolve(baseLogDir, 'meta.json');
   if (!existsSync(metaPath)) return;
@@ -99,7 +100,7 @@ export async function spawnAgent(
   sessionId?: string,
   threadId?: string,
 ): Promise<SpawnResult> {
-  const log: RunnerLogger = console as RunnerLogger;
+  const log = noopLogger;
   const agentName = agent;
 
   const resolvedLogDir = logDir ?? workDir;

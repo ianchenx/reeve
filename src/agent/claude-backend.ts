@@ -12,6 +12,7 @@ import type { AgentBackend, SpawnOptions } from './backend';
 import { prepareClaudeSandbox } from './claude-sandbox';
 import { parseClaudeLine } from './claude-parser';
 import { collectStderr, killProcessTree } from './process-utils';
+import { noopLogger } from './types';
 import type {
   ACPEvent,
   AgentEventHandler,
@@ -77,7 +78,7 @@ export const claudeBackend: AgentBackend = {
     onEvent: AgentEventHandler,
     options: SpawnOptions,
   ): Promise<SpawnResult> {
-    const log: RunnerLogger = console as RunnerLogger;
+    const log = noopLogger;
     const stderrBuffer = { text: '' };
 
     // First spawn: generate a fresh UUID. Continuation: reuse existing.
