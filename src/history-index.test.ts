@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "fs"
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs"
 import { join } from "path"
 import { testTmpDir, cleanupTestTmp } from "./test-helpers"
 import { ensureHistoryIndex, readHistoryIndex, rebuildHistoryIndex, syncHistoryIndexForTask } from "./history-index"

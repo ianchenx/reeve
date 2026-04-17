@@ -19,23 +19,18 @@ const LINEAR_API_URL = "https://api.linear.app/graphql"
 
 export class LinearClient {
   private apiKey: string
-  private projectSlug: string
   private dispatchableStateTypes: Set<string>
   private terminalStates: string[]
   private readonly configuredStateNames: LinearConfig["stateNames"]
   private stateIdCache: Map<string, string> = new Map()
   private issueTeamCache: Map<string, { teamId: string; teamKey: string }> = new Map()
-  private log: Console = console
-
   constructor(config: LinearConfig) {
     this.apiKey = config.apiKey
-    this.projectSlug = config.projectSlug
     this.dispatchableStateTypes = new Set(
       config.dispatchableStateTypes.map(stateType => stateType.toLowerCase())
     )
     this.terminalStates = config.terminalStates
     this.configuredStateNames = config.stateNames
-    this.log = console
   }
 
   get stateNames(): LinearConfig["stateNames"] {
@@ -120,13 +115,9 @@ export class LinearClient {
   async updateIssueState(issueId: string, stateName: string): Promise<void> {
     const team = await this.resolveIssueTeam(issueId)
     const stateId = await this.resolveStateId(team?.teamKey ?? "", stateName)
-    if (!stateId) {
-      ;(this.log.warn as (...args: unknown[]) => void)({ stateName }, "Unknown state, skipping update")
-      return
-    }
+    if (!stateId) return
 
     await this.query(UPDATE_ISSUE_STATE, { issueId, stateId })
-    ;(this.log.info as (...args: unknown[]) => void)({ stateName }, "Updated issue state")
   }
 
   /**

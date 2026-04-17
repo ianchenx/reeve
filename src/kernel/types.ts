@@ -42,14 +42,6 @@ export interface SourceItem {
   baseBranch: string      // Git branch to base worktree on
 }
 
-// ── Dispatch context (kernel-owned budget data passed to agent) ──
-
-export interface DispatchContext {
-  attempt: number    // retry count (budget enforcement)
-  round: number      // continuation count (round budget)
-  trace?: string     // gate failure output from previous run
-}
-
 // ── Retry trace (captured before worktree rebuild) ──
 
 export interface TaskTrace {

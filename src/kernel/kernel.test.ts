@@ -1,53 +1,10 @@
 // kernel.test.ts — Kernel state machine tests
 // Uses a mock Lifecycle to test pure state transitions without real git/agent ops.
 
-import { describe, it, expect, beforeEach, mock } from "bun:test"
-import type { Task, AgentResult, KernelConfig, SourceItem } from "./types"
+import { describe, it, expect, beforeEach } from "bun:test"
+import type { Task, KernelConfig } from "./types"
 import { StateStore } from "./state"
-import { SessionLogger } from "./log"
 import { assertTransition } from "./types"
-
-// ── Minimal mock types ──────────────────────────────────────
-
-interface MockLifecycle {
-  fetchRepos: ReturnType<typeof mock>
-  pollSource: ReturnType<typeof mock>
-  prepare: ReturnType<typeof mock>
-  notifyStart: ReturnType<typeof mock>
-  spawnAgent: ReturnType<typeof mock>
-  gateAndPublish: ReturnType<typeof mock>
-  notifyPublished: ReturnType<typeof mock>
-  runPostPublishHooks: ReturnType<typeof mock>
-  spawnRedispatchAgent: ReturnType<typeof mock>
-  pushFix: ReturnType<typeof mock>
-  notifyDone: ReturnType<typeof mock>
-  hasCommits: ReturnType<typeof mock>
-  checkPRStatus: ReturnType<typeof mock>
-  workspace: { cleanOrphans: ReturnType<typeof mock> }
-}
-
-function createMockLifecycle(): MockLifecycle {
-  return {
-    fetchRepos: mock(() => Promise.resolve()),
-    pollSource: mock(() => Promise.resolve([])),
-    prepare: mock(() => Promise.resolve({ worktree: "/tmp/wt", branch: "agent/test" })),
-    notifyStart: mock(() => Promise.resolve()),
-    spawnAgent: mock(() => Promise.resolve({
-      handle: { pid: 12345, agent: "claude", done: new Promise(() => {}) },
-    })),
-    gateAndPublish: mock(() => Promise.resolve({ ok: true, publishResult: { kind: "created", prUrl: "https://github.com/pr/1" } })),
-    notifyPublished: mock(() => Promise.resolve()),
-    runPostPublishHooks: mock(() => Promise.resolve()),
-    spawnRedispatchAgent: mock(() => Promise.resolve({
-      handle: { pid: 12346, agent: "claude", done: new Promise(() => {}) },
-    })),
-    pushFix: mock(() => Promise.resolve({ kind: "created", prUrl: "https://github.com/pr/1" })),
-    notifyDone: mock(() => Promise.resolve()),
-    hasCommits: mock(() => Promise.resolve(false)),
-    checkPRStatus: mock(() => Promise.resolve("unknown")),
-    workspace: { cleanOrphans: mock(() => Promise.resolve([])) },
-  }
-}
 
 function makeTask(overrides: Partial<Task> = {}): Task {
   return {

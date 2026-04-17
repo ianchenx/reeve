@@ -119,23 +119,6 @@ export const FETCH_WORKFLOW_STATES = `
   }
 `
 
-export const FETCH_PROJECT_BY_SLUG = `
-  query FetchProjectBySlug($projectSlug: String!) {
-    projects(filter: { slugId: { eq: $projectSlug } }) {
-      nodes {
-        id
-        slugId
-        teams {
-          nodes {
-            id
-            key
-          }
-        }
-      }
-    }
-  }
-`
-
 export const FETCH_ISSUE_TEAM = `
   query FetchIssueTeam($issueId: ID!) {
     issues(filter: { id: { eq: $issueId } }) {

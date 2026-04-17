@@ -28,7 +28,7 @@ function createMockTask(tmpDir: string): Task {
   } as Task
 }
 
-function mockPostAgent(name: string, exitCode = 0): PostAgent {
+function mockPostAgent(name: string): PostAgent {
   return {
     name,
     buildPrompt: () => `prompt for ${name}`,

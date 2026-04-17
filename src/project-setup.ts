@@ -76,19 +76,17 @@ export function detectProjectConfig(repoPath: string): DetectedConfig {
   const config: DetectedConfig = {}
 
   // Detect package manager → setup command
-  const pmRules: Array<{ lockfile: string; setup: string; runner: string }> = [
-    { lockfile: "bun.lock", setup: "bun install", runner: "bunx" },
-    { lockfile: "bun.lockb", setup: "bun install", runner: "bunx" },
-    { lockfile: "pnpm-lock.yaml", setup: "pnpm install", runner: "pnpm exec" },
-    { lockfile: "yarn.lock", setup: "yarn install", runner: "npx" },
-    { lockfile: "package-lock.json", setup: "npm install", runner: "npx" },
+  const pmRules: Array<{ lockfile: string; setup: string }> = [
+    { lockfile: "bun.lock", setup: "bun install" },
+    { lockfile: "bun.lockb", setup: "bun install" },
+    { lockfile: "pnpm-lock.yaml", setup: "pnpm install" },
+    { lockfile: "yarn.lock", setup: "yarn install" },
+    { lockfile: "package-lock.json", setup: "npm install" },
   ]
 
-  let runner = "npx"
   for (const rule of pmRules) {
     if (existsSync(resolve(repoPath, rule.lockfile))) {
       config.setup = rule.setup
-      runner = rule.runner
       break
     }
   }

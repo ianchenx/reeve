@@ -5,7 +5,6 @@ import { resolve } from 'path'
 import { existsSync, rmSync } from 'fs'
 import type { Task } from '../../kernel/types'
 import { runAction } from '../context'
-import { executeAction } from '../../actions/registry'
 import { sanitizeTaskIdentifier, taskDir, LOGS_DIR } from '../../paths'
 import { getSettingsPath } from '../../config'
 

@@ -1,6 +1,6 @@
 // agent/codex-mapper.test.ts
 import { describe, expect, test } from 'bun:test';
-import { mapCodexNotification, type CodexMapResult } from './codex-mapper';
+import { mapCodexNotification } from './codex-mapper';
 
 describe('mapCodexNotification', () => {
   test('thread/started → session_ready with thread id', () => {

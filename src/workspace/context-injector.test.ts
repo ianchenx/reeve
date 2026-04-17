@@ -37,7 +37,7 @@ describe("provisionSkillsToWrapper", () => {
 describe("setupAgentContext", () => {
   test("writes custom rules and provisions filtered skills", () => {
     const dir = testTmpDir("reeve-ctx-agent-")
-    setupAgentContext(dir, "my-project", "# Custom Rules\nDo stuff", ["reeve-linear"])
+    setupAgentContext(dir, "# Custom Rules\nDo stuff", ["reeve-linear"])
 
     const claude = readFileSync(resolve(dir, "CLAUDE.md"), "utf-8")
     expect(claude).toContain("Custom Rules")

@@ -245,7 +245,6 @@ export function provisionSkillsToWrapper(wrapperDir: string, filter?: string[]):
  */
 export function setupAgentContext(
   agentDir: string,
-  repoName: string,
   rules: string,
   skillFilter?: string[],
 ): void {

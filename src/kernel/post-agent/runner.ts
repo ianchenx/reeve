@@ -32,7 +32,7 @@ function prepareAgentDir(
 ): string {
   const agentDir = resolve(taskDir, agent.name)
   const rules = agent.buildRules(repoName)
-  setupAgentContext(agentDir, repoName, rules, agent.skills)
+  setupAgentContext(agentDir, rules, agent.skills)
 
   const repoLink = resolve(agentDir, repoName)
   try { lstatSync(repoLink) } catch { symlinkSync(worktreeDir, repoLink) }
