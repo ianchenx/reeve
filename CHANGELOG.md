@@ -16,6 +16,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - Linear issue filtering now uses workflow state type (unstarted/started) instead of display name, making it locale-independent
 - Kernel streams lifecycle events over SSE; startup and task events render via a new TTY renderer
 
+### Removed
+- `activeStates` config field (replaced by `dispatchableStateTypes`)
+- `CandidateIssueSnapshot` type and related methods (simplified to direct issue arrays)
+
 ### Fixed
 - Update check now queries the correct npm package name (`reeve-ai`) — previously looked up the wrong name and never reported upgrades
 - Startup banner compares the running version against `cache.latest` — no more false "new version available" right after upgrading
@@ -23,10 +27,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - `ensureWorkflowStates` honors `workflowStateCreate.success`, so API-rejected state creations are now reported as missing
 - Several previously-silent failures now surface in logs: project-setup exit codes, state-load failures, reconcile errors
 - Workpad header shows the short SHA only
-
-### Removed
-- `activeStates` config field (replaced by `dispatchableStateTypes`)
-- `CandidateIssueSnapshot` type and related methods (simplified to direct issue arrays)
 
 ## [0.0.1] - 2026-04-14
 
