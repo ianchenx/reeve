@@ -6,13 +6,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-### Changed
-- Linear issue filtering now uses workflow state type (unstarted/started) instead of display name, making it locale-independent
+## [0.0.2] - 2026-04-17
 
 ### Added
 - Smoke tests: Docker-based package verification (`make smoke`, `make smoke-full`)
 - E2E test infrastructure: atomic fixture runner with real Linear issues (`make e2e`, `make e2e-happy`, `make e2e-review`)
-- Testing documentation in AGENTS.md with three-layer test strategy (unit/smoke/E2E)
+
+### Changed
+- Linear issue filtering now uses workflow state type (unstarted/started) instead of display name, making it locale-independent
+- Kernel streams lifecycle events over SSE; startup and task events render via a new TTY renderer
+
+### Fixed
+- Update check now queries the correct npm package name (`reeve-ai`) — previously looked up the wrong name and never reported upgrades
+- Startup banner compares the running version against `cache.latest` — no more false "new version available" right after upgrading
+- Dashboard project import surfaces missing Linear workflow states instead of silently closing the sheet
+- `ensureWorkflowStates` honors `workflowStateCreate.success`, so API-rejected state creations are now reported as missing
+- Several previously-silent failures now surface in logs: project-setup exit codes, state-load failures, reconcile errors
+- Workpad header shows the short SHA only
 
 ### Removed
 - `activeStates` config field (replaced by `dispatchableStateTypes`)
