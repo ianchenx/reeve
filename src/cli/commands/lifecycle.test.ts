@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
-import { mkdtempSync } from "fs"
+import { mkdirSync, mkdtempSync, writeFileSync } from "fs"
 import { tmpdir } from "os"
 import { join } from "path"
 import {
@@ -167,6 +167,77 @@ async function loadStartCli(opts: { ready: boolean }) {
   }
 }
 
+async function loadStopCli(homeDir: string) {
+  const originalSpawnSync = Bun.spawnSync
+  const originalKill = process.kill
+  const originalLog = console.log
+  const originalHome = process.env.HOME
+
+  const kill = mock(() => true)
+  const logs: string[] = []
+  const removePid = mock(() => {})
+
+  process.env.HOME = homeDir
+
+  mock.module("../../config", () => ({
+    loadConfig: () => ({
+      dashboard: { port: 14500, enabled: true },
+    }),
+  }))
+
+  mock.module("../../daemon-pid", () => ({
+    readPid: () => null,
+    writePid: mock(() => {}),
+    removePid,
+  }))
+
+  Bun.spawnSync = ((args: string[]) => {
+    if (args[0] === "lsof") {
+      return {
+        stdout: new TextEncoder().encode(""),
+        stderr: new TextEncoder().encode(""),
+        exitCode: 0,
+        pid: 1,
+        signal: null,
+      } as unknown as ReturnType<typeof Bun.spawnSync>
+    }
+
+    return originalSpawnSync(args)
+  }) as typeof Bun.spawnSync
+
+  process.kill = kill as unknown as typeof process.kill
+  console.log = ((message?: unknown) => {
+    logs.push(String(message ?? ""))
+  }) as typeof console.log
+
+  try {
+    const { cac } = await import("cac")
+    const { registerLifecycleCommands } = await import(`./lifecycle?stop-test=${Date.now()}-${Math.random()}`)
+    const cli = cac("reeve")
+    registerLifecycleCommands(cli)
+    return {
+      cli,
+      kill,
+      logs,
+      removePid,
+      restore() {
+        Bun.spawnSync = originalSpawnSync
+        process.kill = originalKill
+        console.log = originalLog
+        if (originalHome !== undefined) process.env.HOME = originalHome
+        else delete process.env.HOME
+      },
+    }
+  } catch (err) {
+    Bun.spawnSync = originalSpawnSync
+    process.kill = originalKill
+    console.log = originalLog
+    if (originalHome !== undefined) process.env.HOME = originalHome
+    else delete process.env.HOME
+    throw err
+  }
+}
+
 describe("bootstrapDaemonRuntime", () => {
   it("defers kernel creation until setup is ready", async () => {
     const createRuntime = mock(async () => ({ ok: true }))
@@ -200,6 +271,26 @@ describe("cmdStart", () => {
       expect(spawnArgs).toBeDefined()
       expect(spawnArgs?.at(-1)).toBe("daemon")
       expect(writePid).toHaveBeenCalledWith(process.pid)
+    } finally {
+      restore()
+    }
+  })
+})
+
+describe("cmdStop", () => {
+  it("ignores legacy ~/.config/reeve/reeve.pid", async () => {
+    const homeDir = mkdtempSync(join(tmpdir(), "reeve-stop-test-"))
+    mkdirSync(join(homeDir, ".config", "reeve"), { recursive: true })
+    writeFileSync(join(homeDir, ".config", "reeve", "reeve.pid"), "4242\n")
+
+    const { cli, kill, logs, removePid, restore } = await loadStopCli(homeDir)
+
+    try {
+      await cli.parse(["bun", "/usr/local/bin/reeve", "stop"])
+
+      expect(kill).not.toHaveBeenCalled()
+      expect(removePid).not.toHaveBeenCalled()
+      expect(logs).toContain("reeve is not running")
     } finally {
       restore()
     }

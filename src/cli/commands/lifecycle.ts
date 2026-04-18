@@ -314,21 +314,7 @@ async function cmdDaemon(): Promise<void> {
 async function cmdStop(): Promise<void> {
   const config = loadConfig()
   const port = config.dashboard.port
-  let pid = readPid()
-
-  // Fallback: check legacy PID file location (~/.config/reeve/reeve.pid)
-  if (!pid) {
-    const legacyPidPath = resolve(process.env.HOME || '/tmp', '.config', 'reeve', 'reeve.pid')
-    try {
-      const { readFileSync: readFs, unlinkSync: unlinkFs } = await import('fs')
-      const raw = readFs(legacyPidPath, 'utf-8').trim()
-      const legacyPid = parseInt(raw, 10)
-      if (!isNaN(legacyPid)) {
-        pid = legacyPid
-        try { unlinkFs(legacyPidPath) } catch {}
-      }
-    } catch {}
-  }
+  const pid = readPid()
 
   if (!pid) {
     // Last resort: find by port
