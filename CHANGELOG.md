@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-04-18
+
+### Fixed
+- `reeve run` setup page no longer serves HTML in place of JS/image assets — fixes the "Expected a JavaScript module, got text/html" MIME error that broke the first-run setup UI
+
 ## [0.0.3] - 2026-04-18
 
 ### Changed
