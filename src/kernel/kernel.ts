@@ -850,29 +850,6 @@ export class Kernel {
     return true;
   }
 
-  async retryTask(identifier: string, clean = false): Promise<{ mode: string; identifier: string; message: string }> {
-    const task = this.store.getByIdentifier(identifier) ?? this.store.all().find(t => t.id === identifier);
-    if (!task) throw new Error(`Task not found: ${identifier}`);
-    if (task.state !== 'done') throw new Error(`Task ${task.identifier} is ${task.state}, not done — cannot retry`);
-    if (task.doneReason === 'merged') throw new Error(`Task ${task.identifier} was merged — nothing to retry`);
-
-    if (clean) {
-      if (task.pid) killAgent(task.pid);
-      this.store.delete(task.id);
-      this.store.save();
-      return { mode: 'clean', identifier: task.identifier, message: 'Task removed — will be re-created on next poll if issue is in Todo' };
-    }
-
-    task.state = 'published';
-    task.doneReason = undefined;
-    task.round = 0;
-    task.retryCount = 0;
-    task.lastExitDisposition = 'passive';
-    task.updatedAt = new Date().toISOString();
-    this.store.save();
-    return { mode: 'continue', identifier: task.identifier, message: 'Task revived — will re-dispatch on next tick' };
-  }
-
   // ── Project management (hot-reload) ─────────────────────
 
   addProject(project: Partial<ProjectConfig> & { team: string; slug: string; repo: string; baseBranch: string }): void {

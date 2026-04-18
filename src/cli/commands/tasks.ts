@@ -1,4 +1,4 @@
-// cli/commands/tasks.ts — Task operations: status, tasks, log, retry, cancel, history, clean
+// cli/commands/tasks.ts — Task operations: status, tasks, log, cancel, history, clean
 
 import type { CAC } from 'cac'
 import { resolve } from 'path'
@@ -121,17 +121,6 @@ export function registerTaskCommands(cli: CAC): void {
         const tail = Bun.spawnSync(['tail', '-n', String(opts.n), logPath])
         process.stdout.write(tail.stdout)
       }
-    })
-
-  cli
-    .command('retry <identifier>', 'Retry a failed task')
-    .option('--clean', 'Delete and re-create (new worktree)')
-    .action(async (identifier: string, opts: { clean: boolean; json: boolean }) => {
-      await runAction('retry', { identifier, clean: opts.clean ?? false }, { json: opts.json }, (data: unknown) => {
-        const r = data as { mode: string; identifier: string; message: string }
-        const icon = r.mode === 'continue' ? '\ud83d\udd04' : '\ud83d\uddd1\ufe0f'
-        console.log(`${icon} ${r.message}`)
-      })
     })
 
   cli

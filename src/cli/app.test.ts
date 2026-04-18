@@ -79,18 +79,6 @@ describe("cli parser regression", () => {
     expect(cli.matchedCommandName).toBe("clean")
   })
 
-  test("retry with --clean flag", () => {
-    const cli = createCliApp()
-    const parsed = cli.parse(
-      [...baseArgv, "retry", "TES-42", "--clean"],
-      { run: false },
-    )
-
-    expect(parsed.args).toEqual(["TES-42"])
-    expect(parsed.options.clean).toBe(true)
-    expect(cli.matchedCommandName).toBe("retry")
-  })
-
   test("history with identifier", () => {
     const cli = createCliApp()
     const parsed = cli.parse(

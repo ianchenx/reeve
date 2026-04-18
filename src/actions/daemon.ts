@@ -23,22 +23,6 @@ function readStateFile(): Task[] {
   return store.all()
 }
 
-// ── retry (via kernel API) ────────────────────────────────────
-
-registerAction({
-  name: "retry",
-  description: "Retry a failed task — revive in-place or clean-slate",
-  input: z.object({
-    identifier: z.string(),
-    clean: z.boolean().default(false),
-  }),
-  output: z.any(),
-  requiresDaemon: true,
-  async handler(ctx: ActionContext, input: { identifier: string; clean: boolean }) {
-    return ctx.kernel!.retryTask(input.identifier, input.clean)
-  },
-})
-
 // ── health (requires daemon — needs tick timing) ──────────────
 
 registerAction({
