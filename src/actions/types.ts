@@ -10,6 +10,12 @@ export interface ActionContext {
   kernel?: Kernel              // Only available when daemon is running
   config: ReeveDaemonConfig
   projects: Array<{ slug: string; repo: string }>
+  /**
+   * Optional hook to activate (start) the kernel. Called by actions such as
+   * projectImport when the first project is added. Only provided by HTTP
+   * callers in daemon mode — CLI / tests pass undefined.
+   */
+  onActivate?: () => Promise<void>
 }
 
 // ── Action definition ─────────────────────────────────────────

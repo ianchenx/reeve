@@ -24,8 +24,6 @@ interface CreateApiAppDeps {
 
 export function createApiApp(deps: CreateApiAppDeps): Hono<ApiEnv> {
   const app = new Hono<ApiEnv>();
-  let activationPromise: Promise<void> | null = null;
-
   const actionRoute = (
     name: string,
     inputFn?: (c: Context<ApiEnv>) => unknown | Promise<unknown>,
@@ -89,7 +87,11 @@ export function createApiApp(deps: CreateApiAppDeps): Hono<ApiEnv> {
   });
 
   app.use('*', async (c, next) => {
-    c.set('actionCtx', deps.getCtx());
+    const ctx = deps.getCtx();
+    if (deps.onActivate && !ctx.onActivate) {
+      ctx.onActivate = deps.onActivate;
+    }
+    c.set('actionCtx', ctx);
     await next();
   });
 
@@ -154,30 +156,6 @@ export function createApiApp(deps: CreateApiAppDeps): Hono<ApiEnv> {
         cleanup();
       }
     });
-  });
-
-  app.post('/runtime/activate', async (c) => {
-    if (!deps.onActivate) {
-      return c.json({ error: 'runtime activation is not available' }, 400);
-    }
-
-    if (!activationPromise) {
-      activationPromise = deps.onActivate().finally(() => {
-        activationPromise = null;
-      });
-    }
-
-    try {
-      await activationPromise;
-      return c.json({ ok: true });
-    } catch (error) {
-      return c.json(
-        {
-          error: error instanceof Error ? error.message : String(error),
-        },
-        500,
-      );
-    }
   });
 
   app.notFound((c) => c.json({ error: 'Not Found' }, 404));

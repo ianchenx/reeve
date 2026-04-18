@@ -408,6 +408,60 @@ describe("projects actions", () => {
     ])
   })
 
+  test("projectImport auto-activates the kernel on first successful import", async () => {
+    const homeDir = createTempHome()
+    process.env.HOME = homeDir
+    writeSettings(homeDir, {})
+    // verifyRepoExistsResult defaults to null in beforeEach — repo check passes.
+
+    const workspaceRoot = resolve(homeDir, ".reeve", "workspaces")
+    mkdirSync(resolve(workspaceRoot, "acme", "app", ".git"), { recursive: true })
+
+    const onActivate = mock(async () => {})
+    const ctx = createCtx()
+    ctx.config.workspace.root = workspaceRoot
+    ctx.onActivate = onActivate
+
+    const result = await executeAction(ctx, "projectImport", {
+      repo: "acme/app",
+      slug: "proj-1",
+      team: "TES",
+      baseBranch: "main",
+    })
+
+    expect(result.ok).toBe(true)
+    expect(onActivate).toHaveBeenCalledTimes(1)
+  })
+
+  test("projectImport does not auto-activate when kernel is already ticking", async () => {
+    const homeDir = createTempHome()
+    process.env.HOME = homeDir
+    writeSettings(homeDir, {})
+
+    const workspaceRoot = resolve(homeDir, ".reeve", "workspaces")
+    mkdirSync(resolve(workspaceRoot, "acme", "app2", ".git"), { recursive: true })
+
+    const onActivate = mock(async () => {})
+    const ctx = createCtx()
+    ctx.config.workspace.root = workspaceRoot
+    ctx.onActivate = onActivate
+    ctx.kernel = {
+      lastTickAt: Date.now(),
+      addProject() {},
+      updateProject() { return false },
+    } as any
+
+    const result = await executeAction(ctx, "projectImport", {
+      repo: "acme/app2",
+      slug: "proj-2",
+      team: "TES",
+      baseBranch: "main",
+    })
+
+    expect(result.ok).toBe(true)
+    expect(onActivate).not.toHaveBeenCalled()
+  })
+
   test("projectImport rejects unreachable repo before mutating settings", async () => {
     const homeDir = createTempHome()
     process.env.HOME = homeDir

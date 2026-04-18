@@ -375,6 +375,19 @@ registerAction({
       }
     }
 
+    // Auto-activate the kernel if it is idle. First successful import is
+    // the implicit "start" signal — no dedicated button or endpoint.
+    const kernelIdle = !ctx.kernel || ctx.kernel.lastTickAt === 0
+    if (kernelIdle && ctx.onActivate) {
+      try {
+        await ctx.onActivate()
+      } catch (err) {
+        console.warn(
+          `[projects] auto-activation failed: ${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
+    }
+
     return { ok: true, slug: projectSlug, missingStates }
   },
 })
