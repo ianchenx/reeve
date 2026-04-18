@@ -379,11 +379,9 @@ registerAction({
     // the implicit "start" signal — no dedicated button or endpoint.
     const kernelIdle = !ctx.kernel || ctx.kernel.lastTickAt === 0
     if (kernelIdle && ctx.onActivate) {
-      try {
-        await ctx.onActivate()
-      } catch (err) {
+      void ctx.onActivate().catch((err) => {
         console.warn('[projects] auto-activation failed:', err)
-      }
+      })
     }
 
     return { ok: true, slug: projectSlug, missingStates }

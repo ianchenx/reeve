@@ -433,6 +433,43 @@ describe("projects actions", () => {
     expect(onActivate).toHaveBeenCalledTimes(1)
   })
 
+  test("projectImport returns before background activation finishes", async () => {
+    const homeDir = createTempHome()
+    process.env.HOME = homeDir
+    writeSettings(homeDir, {})
+
+    const workspaceRoot = resolve(homeDir, ".reeve", "workspaces")
+    mkdirSync(resolve(workspaceRoot, "acme", "slow-app", ".git"), { recursive: true })
+
+    let releaseActivation!: () => void
+    const onActivate = mock(() => new Promise<void>((resolve) => {
+      releaseActivation = resolve
+    }))
+
+    const ctx = createCtx()
+    ctx.config.workspace.root = workspaceRoot
+    ctx.onActivate = onActivate
+
+    let settled = false
+    const resultPromise = executeAction(ctx, "projectImport", {
+      repo: "acme/slow-app",
+      slug: "proj-slow",
+      team: "TES",
+      baseBranch: "main",
+    }).then((result) => {
+      settled = true
+      return result
+    })
+
+    await Bun.sleep(25)
+    expect(onActivate).toHaveBeenCalledTimes(1)
+    expect(settled).toBe(true)
+
+    releaseActivation()
+    const result = await resultPromise
+    expect(result.ok).toBe(true)
+  })
+
   test("projectImport does not auto-activate when kernel is already ticking", async () => {
     const homeDir = createTempHome()
     process.env.HOME = homeDir
