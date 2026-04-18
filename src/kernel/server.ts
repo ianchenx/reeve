@@ -120,7 +120,7 @@ export function createApiApp(deps: CreateApiAppDeps): Hono<ApiEnv> {
   app.get('/history/:id', actionRoute('historyDetail', (c) => ({ id: c.req.param('id') })));
   app.get('/live/session/:identifier', actionRoute('liveSession', (c) => ({ identifier: c.req.param('identifier') })));
   app.get('/worktree/:identifier', actionRoute('worktreeStatus', (c) => ({ identifier: c.req.param('identifier') })));
-  app.get('/worktree/:identifier/diff/*', actionRoute('worktreeDiff', (c) => ({ identifier: c.req.param('identifier'), file: c.req.param('*') })));
+  app.get('/worktree/:identifier/diff/:file{.+}', actionRoute('worktreeDiff', (c) => ({ identifier: c.req.param('identifier'), file: c.req.param('file') })));
   app.post('/tasks/:identifier/clean', actionRoute('cleanTask', (c) => ({ identifier: c.req.param('identifier') })));
   app.post('/clean-done', actionRoute('cleanAllDone'));
   app.get('/validate', actionRoute('validate'));

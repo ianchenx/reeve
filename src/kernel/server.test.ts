@@ -9,7 +9,7 @@ import { createApiApp } from "./server"
 import { Kernel } from "./kernel"
 import type { Source } from "./source"
 import type { ReeveDaemonConfig, ProjectConfig } from "../config"
-import type { KernelConfig } from "./types"
+import type { KernelConfig, Task } from "./types"
 import type { ActionContext } from "../actions/types"
 
 // Force action registration
@@ -19,12 +19,20 @@ import "../actions/index"
 
 const TEST_DIR = resolve(process.cwd(), ".test-tmp", `server-${Date.now()}`)
 const SETTINGS_PATH = resolve(TEST_DIR, "settings.json")
+const WORKTREE_DIR = resolve(TEST_DIR, "worktree-repo")
 
 function writeSettings(projects: Array<Record<string, unknown>> = []) {
   writeFileSync(SETTINGS_PATH, JSON.stringify({
     linearApiKey: "test_key",
     projects,
   }, null, 2))
+}
+
+function runGit(args: string[], cwd: string): void {
+  const proc = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe" })
+  if (proc.exitCode !== 0) {
+    throw new Error(`git ${args.join(" ")} failed: ${new TextDecoder().decode(proc.stderr)}`)
+  }
 }
 
 // ── Mock source ──────────────────────────────────────────────
@@ -50,6 +58,24 @@ const TEST_PROJECT: Omit<ProjectConfig, "slug"> & { slug: string } = {
   setup: "bun install",
   agent: "claude",
   post: { review: "codex" },
+}
+
+const WORKTREE_TASK: Task = {
+  id: "task-worktree-1",
+  identifier: "TES-53",
+  title: "Inspect worktree diff",
+  description: "",
+  labels: [],
+  priority: null,
+  state: "active",
+  repo: TEST_PROJECT.repo,
+  baseBranch: "main",
+  worktree: WORKTREE_DIR,
+  round: 0,
+  maxRounds: 1,
+  retryCount: 0,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 }
 
 beforeAll(() => {
@@ -95,6 +121,17 @@ beforeAll(() => {
   }
 
   kernel = new Kernel(mockSource, config, kernelConfig)
+  mkdirSync(resolve(WORKTREE_DIR, "scripts"), { recursive: true })
+  writeFileSync(resolve(WORKTREE_DIR, "package.json"), JSON.stringify({ name: "test-app", version: "1.0.0" }, null, 2) + "\n")
+  writeFileSync(resolve(WORKTREE_DIR, "scripts", "weather.ts"), "export const forecast = 'sunny'\n")
+  runGit(["init", "-b", "main"], WORKTREE_DIR)
+  runGit(["config", "user.name", "Test User"], WORKTREE_DIR)
+  runGit(["config", "user.email", "test@example.com"], WORKTREE_DIR)
+  runGit(["add", "package.json", "scripts/weather.ts"], WORKTREE_DIR)
+  runGit(["commit", "-m", "init"], WORKTREE_DIR)
+  writeFileSync(resolve(WORKTREE_DIR, "package.json"), JSON.stringify({ name: "test-app", version: "1.1.0" }, null, 2) + "\n")
+  writeFileSync(resolve(WORKTREE_DIR, "scripts", "weather.ts"), "export const forecast = 'rainy'\n")
+  ;(kernel as any).store.set(WORKTREE_TASK)
 
   const getCtx = (): ActionContext => ({
     kernel,
@@ -232,6 +269,20 @@ describe("Project CRUD", () => {
       const config = kernel.getConfig()
       expect(config.projects.find(p => p.slug === "throwaway")).toBeUndefined()
     })
+  })
+})
+
+describe("Worktree API", () => {
+  it("returns diffs for top-level and nested files", async () => {
+    const pkg = await api("/worktree/TES-53/diff/package.json")
+    expect(pkg.status).toBe(200)
+    const pkgJson = await pkg.json() as { diff: string }
+    expect(pkgJson.diff).toContain('"version": "1.1.0"')
+
+    const nested = await api("/worktree/TES-53/diff/scripts%2Fweather.ts")
+    expect(nested.status).toBe(200)
+    const nestedJson = await nested.json() as { diff: string }
+    expect(nestedJson.diff).toContain("rainy")
   })
 })
 
