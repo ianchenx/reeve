@@ -18,20 +18,72 @@ export interface CodexMapResult {
   turnCompleted?: boolean;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' ? value as Record<string, unknown> : undefined;
+}
+
+function readNumber(record: Record<string, unknown> | undefined, ...keys: string[]): number | undefined {
+  for (const key of keys) {
+    const value = record?.[key];
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+  }
+  return undefined;
+}
+
+function hasUsageFields(record: Record<string, unknown> | undefined): boolean {
+  return !!record && [
+    'inputTokens',
+    'input_tokens',
+    'outputTokens',
+    'output_tokens',
+    'totalTokens',
+    'total_tokens',
+    'cachedInputTokens',
+    'cached_input_tokens',
+    'total',
+  ].some(key => key in record);
+}
+
 function extractUsage(params: unknown): TokenUsageSnapshot | null {
-  const p = params as Record<string, unknown> | undefined;
-  const usage = (p?.usage ?? p) as Record<string, unknown> | undefined;
-  if (!usage) return null;
-  const input = Number(usage.input_tokens ?? 0) || 0;
-  const output = Number(usage.output_tokens ?? 0) || 0;
-  const cached = Number(usage.cached_input_tokens ?? 0) || 0;
-  const total = Number(usage.total_tokens ?? input + output) || input + output;
+  const p = asRecord(params);
+  if (!p) return null;
+
+  const tokenUsage = asRecord(p.tokenUsage);
+  const totalBucket = asRecord(tokenUsage?.total);
+  const lastBucket = asRecord(tokenUsage?.last);
+  const directUsage = asRecord(p.usage);
+  const usage = totalBucket ?? directUsage ?? (hasUsageFields(p) ? p : undefined);
+
+  if (!hasUsageFields(usage)) return null;
+
+  const input = readNumber(usage, 'inputTokens', 'input_tokens', 'input') ?? 0;
+  const output = readNumber(usage, 'outputTokens', 'output_tokens', 'output') ?? 0;
+  const cacheRead = readNumber(usage, 'cachedInputTokens', 'cached_input_tokens', 'cacheRead') ?? 0;
+  const total = readNumber(usage, 'totalTokens', 'total_tokens', 'total') ?? (input + output);
+  const contextSize = readNumber(tokenUsage, 'modelContextWindow', 'model_context_window')
+    ?? readNumber(usage, 'modelContextWindow', 'model_context_window');
+
+  const contextInput = lastBucket
+    ? (readNumber(lastBucket, 'inputTokens', 'input_tokens', 'input') ?? 0)
+    : totalBucket
+      ? undefined
+      : input;
+  const contextCacheRead = lastBucket
+    ? (readNumber(lastBucket, 'cachedInputTokens', 'cached_input_tokens', 'cacheRead') ?? 0)
+    : totalBucket
+      ? undefined
+      : cacheRead;
+  const contextUsed = contextInput !== undefined && contextCacheRead !== undefined
+    ? contextInput + contextCacheRead
+    : undefined;
+
   return {
     input,
     output,
     total,
-    contextUsed: input + cached,
-    contextSize: undefined,
+    cacheRead: cacheRead || undefined,
+    contextUsed,
+    contextSize,
   };
 }
 

@@ -149,18 +149,97 @@ describe('parseClaudeLine', () => {
     expect(events[0]!.usage?.total).toBe(120);
   });
 
-  test('result message → [] (not surfaced)', () => {
+  test('result message → [usage] with cumulative totals and costUsd', () => {
     const raw = {
       type: 'result',
       subtype: 'success',
-      total_cost_usd: 0.002,
+      total_cost_usd: 1.1647355,
+      usage: {
+        input_tokens: 47,
+        output_tokens: 11236,
+        cache_creation_input_tokens: 40664,
+        cache_read_input_tokens: 1258901,
+      },
+    };
+    const events = parseClaudeLine(raw);
+    expect(events).toHaveLength(1);
+    expect(events[0]!.type).toBe('usage');
+    expect(events[0]!.rawMethod).toBe('result.usage');
+    expect(events[0]!.cost).toBe(1.1647355);
+    expect(events[0]!.usage).toEqual({
+      input: 47,
+      output: 11236,
+      total: 11283,
+      cacheRead: 1258901,
+      costUsd: 1.1647355,
+    });
+    // contextUsed must NOT be surfaced — cumulative cacheRead is not a
+    // context-window measure.
+    expect(events[0]!.usage?.contextUsed).toBeUndefined();
+  });
+
+  test('result with no usage → []', () => {
+    expect(parseClaudeLine({ type: 'result', subtype: 'success' })).toEqual([]);
+  });
+
+  test('result with zero cost → no costUsd field', () => {
+    const raw = {
+      type: 'result',
+      subtype: 'success',
+      total_cost_usd: 0,
       usage: { input_tokens: 1, output_tokens: 1 },
     };
-    expect(parseClaudeLine(raw)).toEqual([]);
+    const events = parseClaudeLine(raw);
+    expect(events[0]!.usage?.costUsd).toBeUndefined();
   });
 
   test('non-object input → []', () => {
     expect(parseClaudeLine(null)).toEqual([]);
     expect(parseClaudeLine('string')).toEqual([]);
+  });
+
+  // Regression: assistant per-turn deltas + trailing result totals must merge
+  // into a snapshot with cumulative input/output/cacheRead/costUsd AND the last
+  // observed contextUsed. Previously the per-turn assistant usage overwrote
+  // itself to ~3 output tokens on completion.
+  test('assistant delta + result final → merged snapshot preserves contextUsed', () => {
+    const assistantLine = {
+      type: 'assistant',
+      message: {
+        content: [],
+        usage: {
+          input_tokens: 1,
+          output_tokens: 3,
+          cache_read_input_tokens: 44759,
+          cache_creation_input_tokens: 408,
+        },
+      },
+    };
+    const resultLine = {
+      type: 'result',
+      subtype: 'success',
+      total_cost_usd: 1.1647355,
+      usage: {
+        input_tokens: 47,
+        output_tokens: 11236,
+        cache_creation_input_tokens: 40664,
+        cache_read_input_tokens: 1258901,
+      },
+    };
+
+    const assistantEvents = parseClaudeLine(assistantLine);
+    const resultEvents = parseClaudeLine(resultLine);
+    const merged = {
+      ...assistantEvents[0]!.usage,
+      ...resultEvents[0]!.usage,
+    };
+
+    expect(merged.input).toBe(47);
+    expect(merged.output).toBe(11236);
+    expect(merged.total).toBe(11283);
+    expect(merged.cacheRead).toBe(1258901);
+    expect(merged.costUsd).toBe(1.1647355);
+    // contextUsed from the assistant delta survives the merge.
+    expect(merged.contextUsed).toBe(1 + 44759 + 408);
   });
 });

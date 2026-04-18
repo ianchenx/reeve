@@ -4,10 +4,19 @@
 //   { type: "system", subtype: "init", session_id, tools }
 //   { type: "assistant", message: { content: [{type:"text"|"thinking"|"tool_use"}], usage } }
 //   { type: "user", message: { content: [{type:"tool_result", content, is_error}] } }
-//   { type: "result", ... }  ← not surfaced (cost/final usage captured elsewhere)
+//   { type: "result", subtype, usage, total_cost_usd, ... }
 //
 // A single assistant line often carries BOTH content blocks and a usage
 // roll-up, so the parser returns an ACPEvent array rather than a single event.
+//
+// Usage semantics differ between event kinds:
+//   - assistant.message.usage  → per-turn delta (what that one turn consumed).
+//                                We surface contextUsed = input + cacheRead + cacheCreate.
+//   - result.usage             → authoritative cumulative totals for the session.
+//                                We surface costUsd from result.total_cost_usd.
+// Consumers must MERGE successive usage events (not overwrite), so the final
+// result snapshot supplies the cumulative totals while earlier assistant
+// snapshots preserve the last observed contextUsed.
 //
 // tool_result blocks are wrapped in USER messages, not assistant messages —
 // the CLI echoes the tool output back to the model via a synthetic user turn.
@@ -38,21 +47,53 @@ function extractToolResultText(content: ContentBlock['content']): string {
   return '';
 }
 
-function extractUsage(message: Record<string, unknown>): TokenUsageSnapshot | null {
+interface RawUsage {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheCreate: number;
+}
+
+function readRawUsage(usage: Record<string, unknown>): RawUsage {
+  return {
+    input: Number(usage.input_tokens ?? 0) || 0,
+    output: Number(usage.output_tokens ?? 0) || 0,
+    cacheRead: Number(usage.cache_read_input_tokens ?? 0) || 0,
+    cacheCreate: Number(usage.cache_creation_input_tokens ?? 0) || 0,
+  };
+}
+
+// Assistant lines carry per-turn deltas; contextUsed reflects the tokens the
+// model saw on THIS turn (prompt + cache hits + cache writes).
+function extractAssistantUsage(message: Record<string, unknown>): TokenUsageSnapshot | null {
   const usage = message.usage as Record<string, unknown> | undefined;
   if (!usage) return null;
-  const input = Number(usage.input_tokens ?? 0) || 0;
-  const output = Number(usage.output_tokens ?? 0) || 0;
-  const cacheRead = Number(usage.cache_read_input_tokens ?? 0) || 0;
-  const cacheCreate = Number(usage.cache_creation_input_tokens ?? 0) || 0;
-  const total = input + output;
-  return {
+  const { input, output, cacheRead, cacheCreate } = readRawUsage(usage);
+  const snap: TokenUsageSnapshot = {
     input,
     output,
-    total,
+    total: input + output,
     contextUsed: input + cacheRead + cacheCreate,
-    contextSize: undefined,
   };
+  if (cacheRead > 0) snap.cacheRead = cacheRead;
+  return snap;
+}
+
+// Result lines carry session-wide cumulative totals and final cost. No
+// contextUsed: the cumulative cacheRead is not a context-window measure.
+function extractResultUsage(raw: Record<string, unknown>): TokenUsageSnapshot | null {
+  const usage = raw.usage as Record<string, unknown> | undefined;
+  if (!usage) return null;
+  const { input, output, cacheRead } = readRawUsage(usage);
+  const snap: TokenUsageSnapshot = {
+    input,
+    output,
+    total: input + output,
+  };
+  if (cacheRead > 0) snap.cacheRead = cacheRead;
+  const cost = Number(raw.total_cost_usd);
+  if (Number.isFinite(cost) && cost > 0) snap.costUsd = cost;
+  return snap;
 }
 
 function eventFromContentBlock(block: ContentBlock): ACPEvent | null {
@@ -124,9 +165,10 @@ export function parseClaudeLine(raw: unknown): ACPEvent[] {
       }
     }
 
-    // 2. Usage roll-up (co-emitted on the same line)
+    // 2. Usage roll-up (co-emitted on the same line). Per-turn delta; consumers
+    //    must merge these so the trailing `result` event supplies authoritative totals.
     if (message.usage) {
-      const usage = extractUsage(message);
+      const usage = extractAssistantUsage(message);
       if (usage) {
         events.push({
           type: 'usage',
@@ -160,6 +202,20 @@ export function parseClaudeLine(raw: unknown): ACPEvent[] {
     ];
   }
 
-  // ── result / anything else ─────────────────────────────────
+  // ── result (final usage + cost) ────────────────────────────
+  if (type === 'result') {
+    const usage = extractResultUsage(r);
+    if (!usage) return [];
+    return [
+      {
+        type: 'usage',
+        tokensUsed: usage.total,
+        usage,
+        cost: usage.costUsd,
+        rawMethod: 'result.usage',
+      },
+    ];
+  }
+
   return [];
 }

@@ -5,12 +5,6 @@
  */
 import type { HistoryEntry } from "@/types"
 
-/** Minimal event shape needed by formatters — compatible with SessionViewer.SessionEvent */
-export interface UsageEvent {
-  type: string
-  tokens?: number
-}
-
 export function getTokenTotal(tokensUsed: HistoryEntry["tokensUsed"]): number | null {
   if (typeof tokensUsed === "number") return Number.isFinite(tokensUsed) ? tokensUsed : null
   if (!tokensUsed) return null
@@ -21,12 +15,36 @@ export function getTokenTotal(tokensUsed: HistoryEntry["tokensUsed"]): number | 
   return total > 0 ? total : null
 }
 
-export function getLastUsageTokens(events: UsageEvent[]): number | null {
-  for (let i = events.length - 1; i >= 0; i -= 1) {
-    const ev = events[i]
-    if (ev.type === "usage" && typeof ev.tokens === "number" && Number.isFinite(ev.tokens)) return ev.tokens
+export function getEffectiveInputTokens(tokensUsed: HistoryEntry["tokensUsed"]): number | null {
+  if (!tokensUsed || typeof tokensUsed === "number") return null
+  if (typeof tokensUsed.input !== "number") return null
+  const cacheRead = typeof tokensUsed.cacheRead === "number" ? tokensUsed.cacheRead : 0
+  return Math.max(tokensUsed.input - cacheRead, 0)
+}
+
+export function getDisplayTokenBreakdown(tokensUsed: HistoryEntry["tokensUsed"]): {
+  input?: number
+  output?: number
+} | null {
+  if (!tokensUsed || typeof tokensUsed === "number") return null
+
+  const input = getEffectiveInputTokens(tokensUsed)
+  const output = typeof tokensUsed.output === "number" ? tokensUsed.output : null
+
+  if ((input ?? 0) <= 0 && (output ?? 0) <= 0) return null
+
+  return {
+    ...(typeof input === "number" && input > 0 ? { input } : {}),
+    ...(typeof output === "number" && output > 0 ? { output } : {}),
   }
-  return null
+}
+
+export function formatCompactTokenCount(value?: number | null): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—"
+  return new Intl.NumberFormat("en-US", {
+    notation: value >= 1000 ? "compact" : "standard",
+    maximumFractionDigits: value >= 1000 ? 1 : 0,
+  }).format(value)
 }
 
 export function formatTokenUsage(tokensUsed: HistoryEntry["tokensUsed"], fallbackTokens?: number | null): string {

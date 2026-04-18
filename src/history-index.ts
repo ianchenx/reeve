@@ -29,7 +29,7 @@ export interface HistoryIndexEntry {
   reviewProvider?: string
   contextUsed?: number
   contextSize?: number
-  tokensUsed?: { input: number; output: number; total: number }
+  tokensUsed?: { input: number; output: number; cacheRead?: number; total: number }
 }
 
 export interface HistoryIndex {
@@ -121,7 +121,12 @@ function toIndexEntry(logDirName: string, relativePath: string, meta: MetaRecord
     contextUsed: typeof meta.contextUsed === "number" ? meta.contextUsed : undefined,
     contextSize: typeof meta.contextSize === "number" ? meta.contextSize : undefined,
     tokensUsed: (meta.tokensUsed && typeof meta.tokensUsed === 'object' && typeof (meta.tokensUsed as any).total === 'number')
-      ? { input: Number((meta.tokensUsed as any).input) || 0, output: Number((meta.tokensUsed as any).output) || 0, total: Number((meta.tokensUsed as any).total) }
+      ? {
+          input: Number((meta.tokensUsed as any).input) || 0,
+          output: Number((meta.tokensUsed as any).output) || 0,
+          cacheRead: Number((meta.tokensUsed as any).cacheRead) || undefined,
+          total: Number((meta.tokensUsed as any).total),
+        }
       : undefined,
   }
 }

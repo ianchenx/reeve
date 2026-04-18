@@ -109,6 +109,33 @@ describe('mapCodexNotification', () => {
     expect(result?.event?.usage?.total).toBe(1200);
   });
 
+  test('thread/tokenUsage/updated with tokenUsage.total camelCase → usage event', () => {
+    const result = mapCodexNotification('thread/tokenUsage/updated', {
+      tokenUsage: {
+        total: {
+          inputTokens: 170513,
+          outputTokens: 3806,
+          cachedInputTokens: 151424,
+          totalTokens: 174319,
+        },
+        last: {
+          inputTokens: 24988,
+          cachedInputTokens: 24576,
+        },
+        modelContextWindow: 258400,
+      },
+    });
+    expect(result?.event?.type).toBe('usage');
+    expect(result?.event?.usage).toEqual({
+      input: 170513,
+      output: 3806,
+      total: 174319,
+      cacheRead: 151424,
+      contextUsed: 49564,
+      contextSize: 258400,
+    });
+  });
+
   test('turn/completed → turnCompleted flag set, no event', () => {
     const result = mapCodexNotification('turn/completed', {
       usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 },
@@ -116,6 +143,14 @@ describe('mapCodexNotification', () => {
     expect(result?.turnCompleted).toBe(true);
     // turn/completed rolls up usage; the event may still be a usage event
     expect(result?.event?.type).toBe('usage');
+  });
+
+  test('turn/completed without usage payload does not synthesize zero usage', () => {
+    const result = mapCodexNotification('turn/completed', {
+      turn: { id: 'turn_1', status: 'completed', items: [] },
+    });
+    expect(result?.turnCompleted).toBe(true);
+    expect(result?.event).toBeUndefined();
   });
 
   test('turn/started → null (internal)', () => {

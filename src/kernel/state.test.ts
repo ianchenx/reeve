@@ -141,6 +141,7 @@ describe("StateStore", () => {
             input: 1,
             output: 2,
             total: 3,
+            cacheRead: 6,
             contextUsed: 4,
             contextSize: 5,
           },
@@ -155,6 +156,7 @@ describe("StateStore", () => {
       input: 1,
       output: 2,
       total: 3,
+      cacheRead: 6,
       contextUsed: 4,
       contextSize: 5,
     })

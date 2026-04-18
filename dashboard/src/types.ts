@@ -27,6 +27,7 @@ export interface TaskEntry {
     input?: number
     output?: number
     total?: number
+    cacheRead?: number
     contextUsed?: number
     contextSize?: number
   }
@@ -45,6 +46,7 @@ export interface TokenUsage {
   input?: number
   output?: number
   total?: number
+  cacheRead?: number
   contextUsed?: number
   contextSize?: number
 }

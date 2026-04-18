@@ -66,7 +66,9 @@ function enrichMeta(task: Task, result: AgentResult, gateResult?: string): void 
       meta.tokensUsed = {
         input: task.usage.input,
         output: task.usage.output,
+        cacheRead: task.usage.cacheRead,
         total: task.usage.total,
+        ...(task.usage.costUsd !== undefined ? { costUsd: task.usage.costUsd } : {}),
       };
       meta.contextUsed = task.usage.contextUsed;
       meta.contextSize = task.usage.contextSize;
@@ -367,7 +369,10 @@ export class Kernel {
         task.updatedAt = now;
         task.lastOutputAt = now;
         if (event.type === 'usage' && event.usage) {
-          task.usage = event.usage;
+          // Merge — claude streams per-turn deltas and a final cumulative `result`
+          // snapshot with no contextUsed. Merging preserves the last observed
+          // contextUsed while the result event overrides input/output/cacheRead/cost.
+          task.usage = { ...task.usage, ...event.usage };
         }
       },
       agent,

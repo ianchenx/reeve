@@ -15,6 +15,7 @@ const tokenUsageSchema = z.object({
   input: z.number(),
   output: z.number(),
   total: z.number(),
+  cacheRead: z.number().optional(),
   contextUsed: z.number().optional(),
   contextSize: z.number().optional(),
 }) satisfies z.ZodType<TokenUsageSnapshot>

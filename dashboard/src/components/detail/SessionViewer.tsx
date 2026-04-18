@@ -6,9 +6,9 @@
  * - Tool calls: compact single line, expandable for long content
  * - Thinking: quietest element, collapsed by default
  * - Agent messages: clean text, long content truncated
- * - Usage/exit: horizontal separator style, low visual weight
+ * - Exit: horizontal separator style, low visual weight
  */
-import { useState, useEffect, useRef, useCallback, useMemo } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import Markdown from "react-markdown"
 import { cn } from "@/lib/utils"
 import { ChevronRightIcon, TerminalIcon } from "lucide-react"
@@ -141,33 +141,6 @@ function ThinkingBlock({ text }: { text: string }) {
   )
 }
 
-/* ── Usage — horizontal separator with token count ─── */
-function UsageRow({ tokens, maxTokens }: { tokens: number; maxTokens: number }) {
-  const formatted = tokens >= 1_000_000
-    ? `${(tokens / 1_000_000).toFixed(1)}M`
-    : tokens >= 1_000
-      ? `${(tokens / 1_000).toFixed(1)}k`
-      : tokens.toLocaleString()
-
-  const pct = maxTokens > 0 ? Math.min((tokens / maxTokens) * 100, 100) : 0
-
-  return (
-    <div className="flex items-center gap-3 px-3 py-1.5">
-      <div className="flex-1 h-px bg-border/20" />
-      <div className="flex items-center gap-2">
-        <div className="h-1 w-16 rounded-full bg-muted/30 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-primary/30 transition-all duration-500"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <span className="text-[10px] font-mono tabular-nums text-muted-foreground/40">{formatted}</span>
-      </div>
-      <div className="flex-1 h-px bg-border/20" />
-    </div>
-  )
-}
-
 /* ── Exit — horizontal separator with exit code ─── */
 function ExitRow({ ev }: { ev: SessionEvent }) {
   const code = ev.text.match(/code (\d+)/)?.[1]
@@ -193,16 +166,6 @@ export function SessionViewer({ events, live, className, maxHeight = "calc(100vh
   const containerRef = useRef<HTMLDivElement>(null)
   const isNearBottomRef = useRef(true)
   const [seenCount, setSeenCount] = useState(0)
-
-  const maxTokens = useMemo(() => {
-    let max = 0
-    for (const ev of events) {
-      if (ev.type === "usage" && typeof ev.tokens === "number") {
-        max = Math.max(max, ev.tokens)
-      }
-    }
-    return max
-  }, [events])
 
   const checkIfNearBottom = useCallback(() => {
     const el = containerRef.current
@@ -231,7 +194,6 @@ export function SessionViewer({ events, live, className, maxHeight = "calc(100vh
   }
 
   const rendered: React.ReactNode[] = []
-  let lastUsageTokens: number | null = null
 
   for (let i = 0; i < events.length; i++) {
     const ev = events[i]
@@ -249,8 +211,6 @@ export function SessionViewer({ events, live, className, maxHeight = "calc(100vh
         node = <ToolRow ev={ev} />
         break
       case "usage":
-        lastUsageTokens = ev.tokens ?? null
-        node = ev.tokens ? <UsageRow tokens={ev.tokens} maxTokens={maxTokens} /> : null
         break
       case "result":
         if (ev.text.trim()) {
@@ -271,11 +231,6 @@ export function SessionViewer({ events, live, className, maxHeight = "calc(100vh
         isNew ? <FadeIn key={i}>{node}</FadeIn> : <div key={i}>{node}</div>
       )
     }
-  }
-
-  // Final usage if not already shown
-  if (lastUsageTokens !== null && !events.some(e => e.type === "usage")) {
-    rendered.push(<UsageRow key="final-usage" tokens={lastUsageTokens} maxTokens={maxTokens} />)
   }
 
   const isFillMode = maxHeight === "100%" || maxHeight === "none"

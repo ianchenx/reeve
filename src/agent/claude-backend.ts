@@ -121,7 +121,9 @@ export const claudeBackend: AgentBackend = {
     parseStream(
       proc.stdout,
       (event) => {
-        if (event.type === 'usage' && event.usage) latestUsage = event.usage;
+        if (event.type === 'usage' && event.usage) {
+          latestUsage = { ...latestUsage, ...event.usage };
+        }
         onEvent(event);
       },
       task.identifier,

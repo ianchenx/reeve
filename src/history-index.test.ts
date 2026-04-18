@@ -202,4 +202,33 @@ describe("history-index", () => {
     expect(reviewEntry?.stage).toBe("review")
     expect(reviewEntry?.hookReviewRound).toBe(2)
   })
+
+  test("preserves token breakdown fields from meta", (): void => {
+    const { logsDir, indexPath } = makeLogsDir()
+    const issueDir = join(logsDir, "wor-77")
+
+    writeMeta(issueDir, {
+      issueId: "linear-77",
+      identifier: "WOR-77",
+      title: "Usage breakdown",
+      agent: "codex",
+      repo: "/tmp/repo-a",
+      startedAt: "2026-03-18T00:00:00.000Z",
+      tokensUsed: {
+        input: 28000,
+        output: 10000,
+        cacheRead: 777000,
+        total: 815000,
+      },
+    })
+
+    const index = rebuildHistoryIndex(logsDir, indexPath)
+
+    expect(index.items[0]?.tokensUsed).toEqual({
+      input: 28000,
+      output: 10000,
+      cacheRead: 777000,
+      total: 815000,
+    })
+  })
 })

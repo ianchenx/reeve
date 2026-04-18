@@ -11,10 +11,8 @@ import { StatusBadge } from "@/components/shared/StatusBadge"
 import { ModelAvatar, ModelLabel } from "@/components/shared/ModelAvatar"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { formatDuration } from "@/lib/time"
-import { formatTokenUsage } from "@/lib/format"
 import type { HistoryLayoutProps } from "./types"
 import { ClockIcon, RotateCcwIcon } from "lucide-react"
-import { ContextUsage } from "@/components/shared/ContextUsage"
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -79,8 +77,6 @@ export function TableHistory({ items, loading, onSelectTask, config }: HistoryLa
             <th className="text-left px-3 py-3 font-medium w-[140px]">Project</th>
             <th className="text-left px-3 py-3 font-medium w-[110px]">Agent</th>
             <th className="text-right px-3 py-3 font-medium w-[80px]">Duration</th>
-            <th className="text-right px-3 py-3 font-medium w-[90px]">Tokens</th>
-            <th className="text-right px-3 py-3 font-medium w-[80px]">Context</th>
             <th className="text-center px-3 py-3 font-medium w-[60px]">Runs</th>
             <th className="text-right px-3 py-3 font-medium w-[120px]">Time</th>
             <th className="text-right px-5 py-3 font-medium w-[90px]">Status</th>
@@ -125,16 +121,6 @@ export function TableHistory({ items, loading, onSelectTask, config }: HistoryLa
                 {/* Duration */}
                 <td className="px-3 py-3 text-right text-xs font-mono tabular-nums text-muted-foreground">
                   {formatDuration(latest.startedAt, latest.endedAt)}
-                </td>
-
-                {/* Tokens */}
-                <td className="px-3 py-3 text-right text-xs font-mono tabular-nums text-muted-foreground">
-                  {formatTokenUsage(latest.tokensUsed)}
-                </td>
-
-                {/* Context */}
-                <td className="px-3 py-3 text-right">
-                  <ContextUsage used={latest.contextUsed} size={latest.contextSize} />
                 </td>
 
                 {/* Attempt count */}

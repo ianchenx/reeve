@@ -5,10 +5,13 @@ export interface TokenUsageSnapshot {
   input: number
   output: number
   total: number
+  cacheRead?: number
   /** Context window tokens currently used (from ACPX usage_update) */
   contextUsed?: number
   /** Context window total size (from ACPX usage_update) */
   contextSize?: number
+  /** Total cost in USD. Claude surfaces this via its final `result` event; Codex doesn't expose a cost value. */
+  costUsd?: number
 }
 
 

@@ -19,7 +19,7 @@ import { FileChanges } from "@/components/detail/FileChanges"
 import { SessionViewer } from "@/components/detail/SessionViewer"
 import { PromptViewer, StderrViewer } from "@/components/detail/PromptViewer"
 import { formatDuration } from "@/lib/time"
-import { formatTokenUsage, formatCost, getTokenTotal } from "@/lib/format"
+import { formatCompactTokenCount, formatTokenUsage, formatCost, getDisplayTokenBreakdown, getTokenTotal } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useNavigate } from "@tanstack/react-router"
 import { useConfig } from "@/hooks/useConfig"
@@ -114,6 +114,7 @@ export function DocumentDetail({ data, onBack }: DetailLayoutProps) {
   const sortedAttempts = relatedAttempts.length > 1
     ? [...relatedAttempts].sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime())
     : []
+  const usageBreakdown = getDisplayTokenBreakdown(meta.tokensUsed)
 
   return (
     <div className="flex flex-col h-[calc(100dvh-3rem)] w-full max-w-full overflow-hidden">
@@ -153,7 +154,13 @@ export function DocumentDetail({ data, onBack }: DetailLayoutProps) {
             <ModelLabel model={meta.agent} />
           </div>
           <Metric icon={ClockIcon} label="Duration" value={<span className="font-mono tabular-nums">{formatDuration(meta.startedAt, meta.endedAt)}</span>} />
-          {getTokenTotal(meta.tokensUsed) !== null && (
+          {typeof usageBreakdown?.input === "number" && usageBreakdown.input > 0 && (
+            <Metric icon={ActivityIcon} label="Input" value={<span className="font-mono tabular-nums">{formatCompactTokenCount(usageBreakdown.input)}</span>} />
+          )}
+          {typeof usageBreakdown?.output === "number" && usageBreakdown.output > 0 && (
+            <Metric icon={ActivityIcon} label="Output" value={<span className="font-mono tabular-nums">{formatCompactTokenCount(usageBreakdown.output)}</span>} />
+          )}
+          {!usageBreakdown && getTokenTotal(meta.tokensUsed) !== null && (
             <Metric icon={ActivityIcon} label="Tokens" value={<span className="font-mono tabular-nums">{formatTokenUsage(meta.tokensUsed)}</span>} />
           )}
           {typeof meta.cost === "number" && (
@@ -167,13 +174,6 @@ export function DocumentDetail({ data, onBack }: DetailLayoutProps) {
           {meta.projectSlug && <span className="text-xs text-muted-foreground">Project: {resolveProjectName(meta.projectSlug)}</span>}
           <span className="text-xs text-muted-foreground">Attempt: {meta.attempt}</span>
         </div>
-
-        {meta.tokensUsed && typeof meta.tokensUsed === "object" && (meta.tokensUsed.input || meta.tokensUsed.output) && (
-          <div className="flex items-center gap-3 text-[11px] text-muted-foreground/60">
-            {typeof meta.tokensUsed.input === "number" && <span>Input: <span className="font-mono tabular-nums">{meta.tokensUsed.input.toLocaleString()}</span></span>}
-            {typeof meta.tokensUsed.output === "number" && <span>Output: <span className="font-mono tabular-nums">{meta.tokensUsed.output.toLocaleString()}</span></span>}
-          </div>
-        )}
 
         {/* ── Attempt pills ─── */}
         {sortedAttempts.length > 0 && (
