@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-04-18
+
+### Changed
+- `reeve init` and `reeve import` print the full next-step chain (import → start → status) so the handoff between setup stages is explicit
+- `reeve doctor` prints an inline fix command for each failing check and uses picocolors for ✅/❌ coloring with column-aligned labels
+
 ## [0.0.2] - 2026-04-17
 
 ### Added
