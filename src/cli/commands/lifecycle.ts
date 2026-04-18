@@ -9,6 +9,7 @@ import { getRuntimeHealth } from '../../runtime-health'
 import { createApiApp, serveSpa } from '../../kernel/server'
 import { printAnimatedBanner, printStaticLogo, renderBox } from '../../kernel/banner'
 import { readPid, writePid, removePid } from '../../daemon-pid'
+import { spawnPath } from '../../utils/path'
 
 const REEVE_ROOT = resolve(dirname(new URL(import.meta.url).pathname), '../../..')
 const DIST_DIR = new URL('../../../dashboard/dist', import.meta.url).pathname
@@ -104,14 +105,16 @@ async function cmdStart(): Promise<void> {
   const logPath = resolve(logDir, 'daemon.log')
   const logFd = openSync(logPath, 'a')
 
-  // Resolve PATH from user's login shell so daemon inherits the same tools
-  let daemonPath = process.env.PATH ?? ''
+  // Resolve PATH from user's login shell so daemon inherits the same tools.
+  // Fall back to spawnPath() so daemon can still find gh/claude/codex when
+  // current PATH is empty and login-shell probe fails.
+  let daemonPath = spawnPath()
   try {
     const shell = process.env.SHELL || '/bin/zsh'
     const result = Bun.spawnSync([shell, '-l', '-c', 'echo $PATH'], { stdout: 'pipe' })
     const loginPath = new TextDecoder().decode(result.stdout).trim()
     if (loginPath) daemonPath = loginPath
-  } catch { /* fall back to current PATH */ }
+  } catch { /* fall back to spawnPath() */ }
 
   // Fork daemon — it must enter via app.ts `run` command
   const appPath = resolve(dirname(cliPath), '..', 'app.ts')
@@ -150,65 +153,45 @@ async function cmdStart(): Promise<void> {
   ]))
 }
 
-async function cmdRun(opts: { poll: boolean }): Promise<void> {
+export function buildRunNotReadyMessage(issues: string[]): string {
+  const bullet = issues.map(i => `  • ${i}`).join("\n")
+  return (
+    `✗ reeve run blocked — setup incomplete:\n` +
+    `${bullet}\n\n` +
+    `  reeve init      Interactive wizard\n` +
+    `  reeve start     Background daemon + dashboard setup`
+  )
+}
+
+async function cmdRun(): Promise<void> {
   const { suppressUpdateNotification } = await import('../context')
   suppressUpdateNotification()
-
-  const noPoll = !opts.poll
 
   const config = loadConfig()
   const { ready, issues } = preflight()
 
-  let runtime = await createRuntimeKernel(config)
-  let activationPromise: Promise<typeof runtime> | null = null
-
-  const activateRuntime = async () => {
-    if (runtime.kernel.lastTickAt > 0) return runtime
-    if (!activationPromise) {
-      activationPromise = (async () => {
-        const nextConfig = loadConfig()
-        const { ready: nextReady, issues: nextIssues } = preflight()
-        if (!nextReady) {
-          throw new Error(`Setup incomplete: ${nextIssues.join(', ')}`)
-        }
-
-        const nextRuntime = await createRuntimeKernel(nextConfig)
-        await printStartBanner(nextConfig)
-        await nextRuntime.kernel.start()
-        runtime = nextRuntime
-        return nextRuntime
-      })().finally(() => {
-        activationPromise = null
-      })
-    }
-    return activationPromise
+  if (!ready) {
+    console.error(buildRunNotReadyMessage(issues))
+    process.exit(1)
   }
 
-  const startDashboardServer = (port: number, mountSpa: boolean): ReturnType<typeof Bun.serve> => {
-    let currentKernel = runtime.kernel
-    let currentProjects = runtime.projects
+  const runtime = await createRuntimeKernel(config)
 
+  if (config.dashboard.enabled) {
     const apiApp = createApiApp({
       getCtx: () => ({
-        kernel: currentKernel,
-        config: currentKernel.getConfig(),
-        projects: currentProjects,
+        kernel: runtime.kernel,
+        config: runtime.kernel.getConfig(),
+        projects: runtime.projects,
       }),
-      onActivate: async () => {
-        const nextRuntime = await activateRuntime()
-        currentKernel = nextRuntime.kernel
-        currentProjects = nextRuntime.projects
-      },
     })
 
     const app = new Hono()
     app.route('/api', apiApp)
-    if (mountSpa) {
-      app.use('*', serveSpa(DIST_DIR))
-    }
+    app.use('*', serveSpa(DIST_DIR))
 
-    return Bun.serve({
-      port,
+    Bun.serve({
+      port: config.dashboard.port,
       hostname: process.env.REEVE_HOST || '0.0.0.0',
       idleTimeout: 120,
       fetch(req, server) {
@@ -218,43 +201,6 @@ async function cmdRun(opts: { poll: boolean }): Promise<void> {
         return app.fetch(req, server)
       },
     })
-  }
-
-  if (!ready || noPoll) {
-    if (!config.dashboard.enabled) {
-      console.log(`\n   Enable dashboard in settings to use setup/dev shell mode.`)
-      process.exit(1)
-    }
-
-    if (!ready) {
-      console.log(`\n\u26a0\ufe0f  Setup incomplete:`)
-      for (const issue of issues) console.log(`   \u2022 ${issue}`)
-      console.log(`\n\ud83c\udf10 Starting setup mode\u2026`)
-      console.log(`   Complete setup at http://localhost:${config.dashboard.port}\n`)
-    } else {
-      console.log(`\n\ud83d\udee0\ufe0f  Starting development shell\u2026`)
-      console.log(`   API: http://localhost:${config.dashboard.port}`)
-      console.log(`   Polling stays off until you click "Start Reeve".\n`)
-    }
-
-    startDashboardServer(config.dashboard.port, !ready)
-
-    let shuttingDown = false
-    const graceful = async () => {
-      if (shuttingDown) return
-      shuttingDown = true
-      if (runtime.kernel.lastTickAt > 0) {
-        await runtime.kernel.shutdown()
-      }
-      process.exit(0)
-    }
-    process.on('SIGINT', graceful)
-    process.on('SIGTERM', graceful)
-    return
-  }
-
-  if (config.dashboard.enabled) {
-    startDashboardServer(config.dashboard.port, true)
   }
 
   let stopRenderer: (() => void) | null = null
@@ -349,9 +295,8 @@ export function registerLifecycleCommands(cli: CAC): void {
 
   cli
     .command('run', 'Start in foreground (Ctrl+C to stop)')
-    .option('--no-poll', 'Start dashboard shell without polling')
-    .action(async (opts: { poll: boolean }) => {
-      await cmdRun(opts)
+    .action(async () => {
+      await cmdRun()
     })
 
   cli.command('stop', 'Stop daemon').action(async () => {
