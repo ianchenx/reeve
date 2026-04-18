@@ -1,0 +1,45 @@
+name: update-test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/cli/commands/update.ts
+      - src/daemon-pid.ts
+      - test/smoke/verify-update.sh
+      - .github/workflows/update-test.yml
+  pull_request:
+    paths:
+      - src/cli/commands/update.ts
+      - src/daemon-pid.ts
+      - test/smoke/verify-update.sh
+      - .github/workflows/update-test.yml
+  workflow_dispatch:
+
+jobs:
+  upgrade:
+    name: reeve update (tarball 0.0.0 -> npm latest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Build dashboard
+        run: cd dashboard && bun install && bun run build
+
+      - name: Pack tarball pinned to 0.0.0
+        run: |
+          cp package.json package.json.bak
+          sed -i 's/"version": "[^"]*"/"version": "0.0.0"/' package.json
+          npm pack
+          mv reeve-ai-0.0.0.tgz /tmp/reeve-ai.tgz
+          cp package.json.bak package.json
+
+      - name: Run upgrade test in clean container
+        run: |
+          docker run --rm \
+            -v /tmp/reeve-ai.tgz:/pkg/reeve-ai.tgz:ro \
+            -v "$PWD/test/smoke/verify-update.sh:/verify-update.sh:ro" \
+            oven/bun:latest \
+            bash /verify-update.sh
