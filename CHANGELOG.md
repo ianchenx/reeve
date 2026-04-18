@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-04-18
+
+### Fixed
+- npm package now includes `assets/logo.txt` — restores the animated ASCII logo on `reeve run` and the static logo banner on `reeve start` (previously silently skipped because the file was missing from published tarballs)
+
 ## [0.0.4] - 2026-04-18
 
 ### Fixed

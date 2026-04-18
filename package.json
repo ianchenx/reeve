@@ -14,6 +14,7 @@
     "!src/e2e/",
     "skills/",
     "dashboard/dist/",
+    "assets/logo.txt",
     "tsconfig.json"
   ],
   "scripts": {
