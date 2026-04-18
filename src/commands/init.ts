@@ -98,5 +98,12 @@ export async function cmdInit(): Promise<void> {
 
   settings.defaultTeam = team.key
   saveSettings(settings)
-  p.outro(`Done — global settings saved (team: ${team.key})\n  Next: reeve import <org/repo>`)
+  p.outro(
+    `Done — global settings saved (team: ${team.key})\n\n` +
+    `  Next steps:\n` +
+    `    1. reeve import <org/repo>   Attach a GitHub repo\n` +
+    `    2. reeve start               Launch the daemon (background)\n` +
+    `    3. reeve status              Watch it run\n\n` +
+    `  Run reeve doctor anytime to re-check your environment.`
+  )
 }

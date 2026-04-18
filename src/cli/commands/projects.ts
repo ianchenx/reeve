@@ -78,7 +78,9 @@ export function registerProjectCommands(cli: CAC): void {
         agent: opts.agent,
         post: opts.review ? { review: opts.review } : undefined,
       }, { json: opts.json }, () => {
-        console.log(`\n\u2705 Imported ${repo}`)
+        console.log(`\n\u2705 Imported ${repo}\n`)
+        console.log(`  Next: reeve start      Launch the daemon (background)`)
+        console.log(`        reeve status     Check it's running`)
       })
     })
 
