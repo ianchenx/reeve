@@ -211,7 +211,8 @@ export function serveSpa(distDir: string): MiddlewareHandler {
       await next();
       return;
     }
-    await staticMiddleware(c, async () => {});
+    const staticResponse = await staticMiddleware(c, async () => {});
+    if (staticResponse) return staticResponse;
     if (c.finalized) return;
     return spaFallback(c, next);
   };
