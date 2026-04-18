@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs"
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs"
 import { tmpdir } from "os"
 import { join, resolve } from "path"
 
@@ -71,5 +71,31 @@ describe("loadConfig", () => {
     expect(config.agent.default).toBe("claude")
     expect(config.projects).toEqual([])
     expect(config.workspace.root).toBe(resolve(homeDir, ".reeve", "workspaces"))
+  })
+
+  test("ignores legacy ~/.config/reeve/settings.json", (): void => {
+    const homeDir = createTempHome()
+    const legacyDir = resolve(homeDir, ".config", "reeve")
+    mkdirSync(legacyDir, { recursive: true })
+    writeFileSync(
+      join(legacyDir, "settings.json"),
+      JSON.stringify({
+        linearApiKey: "lin_api_legacy",
+        projects: [
+          { team: "LEG", linear: "legacy-proj", repo: "legacy/repo", baseBranch: "main" },
+        ],
+      }, null, 2),
+    )
+
+    savedHome = process.env.HOME
+    savedReeveDir = process.env.REEVE_DIR
+    process.env.HOME = homeDir
+    delete process.env.REEVE_DIR
+
+    const config = loadConfig()
+
+    expect(config.linear!.apiKey).toBe("")
+    expect(config.projects).toEqual([])
+    expect(existsSync(resolve(homeDir, ".reeve", "settings.json"))).toBe(false)
   })
 })

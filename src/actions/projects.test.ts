@@ -16,7 +16,7 @@ function createTempHome(): string {
 }
 
 function writeSettings(homeDir: string, settings: Record<string, unknown>): void {
-  const settingsDir = resolve(homeDir, ".config", "reeve")
+  const settingsDir = resolve(homeDir, ".reeve")
   mkdirSync(settingsDir, { recursive: true })
   writeFileSync(join(settingsDir, "settings.json"), JSON.stringify(settings, null, 2))
 }

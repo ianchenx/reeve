@@ -1,7 +1,7 @@
 // config.ts — Configuration loader
 // All config lives in ~/.reeve/settings.json
 
-import { existsSync, readFileSync, mkdirSync, writeFileSync, copyFileSync } from "fs"
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from "fs"
 import { resolve } from "path"
 import { z } from "zod"
 
@@ -90,17 +90,7 @@ const settingsSchema = z.object({
 export type ReeveSettings = z.infer<typeof settingsSchema>
 
 export function getSettingsPath(): string {
-  const newPath = resolve(process.env.REEVE_DIR || resolve(process.env.HOME || "/tmp", ".reeve"), "settings.json")
-  const legacyPath = resolve(process.env.HOME || "/tmp", ".config", "reeve", "settings.json")
-
-  // Auto-migrate from legacy ~/.config/reeve/ location
-  if (!existsSync(newPath) && existsSync(legacyPath)) {
-    const dir = resolve(newPath, "..")
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-    copyFileSync(legacyPath, newPath)
-  }
-
-  return newPath
+  return resolve(process.env.REEVE_DIR || resolve(process.env.HOME || "/tmp", ".reeve"), "settings.json")
 }
 
 export function saveSettings(settings: ReeveSettings): void {
