@@ -19,12 +19,29 @@ export class LinearSource implements Source {
     this.stateNames = linearConfig.stateNames
   }
 
+  private classifyDisposition(stateName: string): SourceDisposition {
+    const normalized = stateName.toLowerCase()
+
+    if (this.stateNames.inReview && normalized === this.stateNames.inReview.toLowerCase()) {
+      return "passive"
+    }
+
+    if (this.client.isTerminalState(stateName)) {
+      return normalized === this.stateNames.done.toLowerCase() ? "done" : "cancelled"
+    }
+
+    return "actionable"
+  }
+
   async poll(): Promise<SourceItem[]> {
     const slugs = this.projects.map(p => p.slug)
     const issues = await this.client.fetchCandidateIssuesForSlugs(slugs)
 
     const items: SourceItem[] = []
     for (const issue of issues) {
+      if (this.classifyDisposition(issue.state) !== "actionable") {
+        continue
+      }
       const project = this.projects.find(p => p.slug === issue.projectSlug)
       if (!project) {
         continue
@@ -67,18 +84,7 @@ export class LinearSource implements Source {
     const snapshot = snapshots[0]
     if (!snapshot) return "unknown"
 
-    const name = snapshot.state.toLowerCase()
-
-    // passive: awaiting review — no agent needed
-    if (this.stateNames.inReview && name === this.stateNames.inReview.toLowerCase()) return "passive"
-
-    // terminal: done or cancelled
-    if (this.client.isTerminalState(snapshot.state)) {
-      return name === this.stateNames.done.toLowerCase() ? "done" : "cancelled"
-    }
-
-    // actionable: anything else the source considers active or ready
-    return "actionable"
+    return this.classifyDisposition(snapshot.state)
   }
 
   async detectPrUrl(codeDir: string): Promise<string | undefined> {
