@@ -78,13 +78,6 @@ export async function playReveal(durationMs = 800): Promise<void> {
   }
 }
 
-// ── Static logo (no animation) ──────────────────────────
-export function printStaticLogo(): void {
-  const artLines = loadArt();
-  if (artLines.length === 0) return;
-  console.log(artLines.join('\n'));
-}
-
 // ── Public: full startup banner ─────────────────────────
 export async function printAnimatedBanner(info: {
   repos: string;

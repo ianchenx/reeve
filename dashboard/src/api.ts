@@ -13,10 +13,6 @@ export function setStoredKey(key: string) {
   localStorage.setItem(AUTH_KEY, key)
 }
 
-export function clearStoredKey() {
-  localStorage.removeItem(AUTH_KEY)
-}
-
 function authHeaders(): HeadersInit {
   const key = getStoredKey()
   return key ? { Authorization: `Bearer ${key}` } : {}

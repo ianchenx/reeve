@@ -112,7 +112,6 @@ export function createApiApp(deps: CreateApiAppDeps): Hono<ApiEnv> {
   app.post('/tasks/:id/cancel', actionRoute('cancel', (c) => ({ id: c.req.param('id') })));
   app.get('/log', actionRoute('log', (c) => ({ task: c.req.query('task'), tail: parseInt(c.req.query('tail') ?? '100') })));
   app.get('/history', actionRoute('historyList', (c) => ({ project: c.req.query('project') ?? undefined, query: (c.req.query('q') || c.req.query('identifier'))?.trim() || undefined, agent: c.req.query('agent')?.trim() || undefined, outcome: c.req.query('outcome') ?? undefined, limit: parseInt(c.req.query('limit') ?? '50'), offset: parseInt(c.req.query('offset') ?? '0') })));
-  app.get('/history/:id/agents', actionRoute('historyAgents', (c) => ({ id: c.req.param('id') })));
   app.get('/history/:id/session', actionRoute('historySub', (c) => ({ id: c.req.param('id'), sub: 'session' })));
   app.get('/history/:id/prompt', actionRoute('historySub', (c) => ({ id: c.req.param('id'), sub: 'prompt' })));
   app.get('/history/:id/:agent/session', actionRoute('historySub', (c) => ({ id: c.req.param('id'), sub: `${c.req.param('agent')}/session` })));

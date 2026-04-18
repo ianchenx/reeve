@@ -1,7 +1,7 @@
 // actions/history.ts — History actions (no daemon required)
 
 import { z } from "zod"
-import { readFileSync, existsSync, readdirSync, statSync } from "fs"
+import { readFileSync, existsSync } from "fs"
 import { join, resolve } from "path"
 import { registerAction } from "./registry"
 import type { ActionContext } from "./types"
@@ -241,32 +241,3 @@ registerAction({
   },
 })
 
-// ── historyAgents ────────────────────────────────────────────
-
-registerAction({
-  name: "historyAgents",
-  description: "List agents that ran for a history entry",
-  input: z.object({ id: z.string() }),
-  output: z.any(),
-  requiresDaemon: false,
-  async handler(_ctx: ActionContext, input: { id: string }) {
-    const entry = resolveHistoryEntry(input.id)
-    if (!entry) return { agents: ["implement"] }
-
-    const taskRoot = resolve(TASKS_DIR, entry.logDirName)
-    if (!existsSync(taskRoot)) return { agents: ["implement"] }
-
-    const agents: string[] = []
-    for (const name of readdirSync(taskRoot)) {
-      const dir = resolve(taskRoot, name)
-      try {
-        if (statSync(dir).isDirectory() && existsSync(join(dir, "session.ndjson"))) {
-          agents.push(name)
-        }
-      } catch {}
-    }
-    // Sort: implement first, then alphabetical
-    agents.sort((a, b) => a === "implement" ? -1 : b === "implement" ? 1 : a.localeCompare(b))
-    return { agents: agents.length > 0 ? agents : ["implement"] }
-  },
-})
