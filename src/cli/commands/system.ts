@@ -3,6 +3,7 @@
 import type { CAC } from 'cac'
 import { resolve, dirname } from 'path'
 import { readFileSync } from 'fs'
+import pc from 'picocolors'
 import { loadSettings } from '../../config'
 import { getRuntimeHealth } from '../../runtime-health'
 import { rebuildHistoryIndex } from '../../history-index'
@@ -11,28 +12,107 @@ import type { ActionContext } from '../../actions/types'
 
 const REEVE_ROOT = resolve(dirname(new URL(import.meta.url).pathname), '../../..')
 
+type DoctorRow = { ok: boolean; label: string; detail: string; fix?: string[] }
+
+function renderDoctor(rows: DoctorRow[]): void {
+  const labelWidth = Math.max(...rows.map((r) => r.label.length))
+  for (const r of rows) {
+    const icon = r.ok ? pc.green('\u2705') : pc.red('\u274c')
+    const label = r.label.padEnd(labelWidth)
+    const detail = r.ok ? pc.dim(r.detail) : pc.red(r.detail)
+    console.log(`  ${icon}  ${label}  ${detail}`)
+    if (!r.ok && r.fix) {
+      for (const line of r.fix) {
+        console.log(`      ${pc.cyan('\u21b3')} ${pc.bold(line)}`)
+      }
+    }
+  }
+}
+
 export function registerSystemCommands(cli: CAC): void {
   cli.command('doctor', 'Check environment + prerequisites').action(async () => {
-    console.log('reeve doctor \u2014 checking environment\n')
+    console.log(`${pc.bold('reeve doctor')}${pc.dim(' \u2014 checking environment')}\n`)
+
     const bunProc = Bun.spawnSync(['bun', '--version'], { stdout: 'pipe' })
     const bunOk = bunProc.exitCode === 0
     const bunVersion = bunOk
       ? new TextDecoder().decode(bunProc.stdout).trim()
       : 'not found'
-    console.log(`  ${bunOk ? '\u2705' : '\u274c'} Bun: ${bunVersion}`)
 
     const settings = loadSettings()
     const health = getRuntimeHealth(settings)
 
-    console.log(`  ${health.ghInstalled ? '\u2705' : '\u274c'} GitHub CLI (gh): ${health.ghStatusDetail}`)
-    console.log(`  ${health.gitConfigured ? '\u2705' : '\u274c'} Git identity: ${health.gitConfigured ? `${health.gitUserName} <${health.gitUserEmail}>` : 'missing'}`)
-    console.log(`  ${health.gitHubReachable ? '\u2705' : '\u274c'} GitHub via git: ${health.gitHubReachableDetail}`)
-    console.log(`  ${health.codexInstalled ? '\u2705' : '\u274c'} Codex CLI: ${health.codexInstalled ? 'installed' : 'missing'}`)
-    console.log(`  ${health.hasApiKey ? '\u2705' : '\u274c'} Linear API key: ${health.hasApiKey ? 'configured' : 'missing'}`)
-    console.log(`  ${health.projectCount > 0 ? '\u2705' : '\u274c'} Projects: ${health.projectCount} configured`)
+    const rows: DoctorRow[] = [
+      {
+        ok: bunOk,
+        label: 'Bun',
+        detail: bunVersion,
+        fix: bunOk ? undefined : ['curl -fsSL https://reeve.run/install.sh | bash'],
+      },
+      {
+        ok: health.ghInstalled && health.ghAuthenticated,
+        label: 'GitHub CLI (gh)',
+        detail: health.ghStatusDetail,
+        fix: !health.ghInstalled
+          ? ['brew install gh   (or see https://cli.github.com)']
+          : !health.ghAuthenticated
+            ? ['gh auth login']
+            : undefined,
+      },
+      {
+        ok: health.gitConfigured,
+        label: 'Git identity',
+        detail: health.gitConfigured
+          ? `${health.gitUserName} <${health.gitUserEmail}>`
+          : 'missing',
+        fix: health.gitConfigured
+          ? undefined
+          : [
+              'git config --global user.name  "Your Name"',
+              'git config --global user.email "you@example.com"',
+            ],
+      },
+      {
+        ok: health.gitHubReachable,
+        label: 'GitHub via git',
+        detail: health.gitHubReachableDetail,
+        fix: health.gitHubReachable ? undefined : ['Check your network / proxy'],
+      },
+      {
+        ok: health.codexInstalled,
+        label: 'Codex CLI',
+        detail: health.codexInstalled ? 'installed' : 'missing',
+        fix: health.codexInstalled
+          ? undefined
+          : ['See https://github.com/openai/codex#installation'],
+      },
+      {
+        ok: health.hasApiKey,
+        label: 'Linear API key',
+        detail: health.hasApiKey ? 'configured' : 'missing',
+        fix: health.hasApiKey ? undefined : ['reeve init'],
+      },
+      {
+        ok: health.projectCount > 0,
+        label: 'Projects',
+        detail: `${health.projectCount} configured`,
+        fix: health.projectCount > 0 ? undefined : ['reeve import <org/repo>'],
+      },
+    ]
 
-    const issues = health.issues.length + (bunOk ? 0 : 1)
-    console.log(`\n${issues === 0 ? '\u2705 All checks passed' : `\u274c ${issues} issue(s) found`}`)
+    renderDoctor(rows)
+
+    const issues = rows.filter((r) => !r.ok).length
+    console.log()
+    if (issues === 0) {
+      console.log(pc.green('\u2705 All checks passed'))
+    } else {
+      console.log(
+        `${pc.red(`\u274c ${issues} issue${issues > 1 ? 's' : ''} found`)}` +
+          pc.dim(' \u2014 run the commands above, then re-run ') +
+          pc.bold('reeve doctor'),
+      )
+    }
     process.exit(issues > 0 ? 1 : 0)
   })
 
