@@ -180,10 +180,13 @@ export function registerTaskCommands(cli: CAC): void {
       }
 
       const { WorkspaceManager } = await import('../../workspace/manager')
+      const { RepoStore } = await import('../../workspace/repo-store')
       const { StateStore } = await import('../../kernel/state')
       const { REEVE_DIR } = await import('../../paths')
+      const { loadConfig } = await import('../../config')
 
       const workspace = new WorkspaceManager()
+      const repoStore = new RepoStore(loadConfig().workspace.root)
       const store = new StateStore(resolve(REEVE_DIR, 'state.json'))
       const loaded = store.load()
       console.log(`[clean] Loaded ${loaded} tasks from state`)
@@ -220,7 +223,7 @@ export function registerTaskCommands(cli: CAC): void {
           console.log(`  removed from state: ${task.identifier}`)
         } else {
           try {
-            await workspace.cleanWorktreeOnly(task.identifier, task.repo)
+            await workspace.cleanWorktreeOnly(task.identifier, repoStore.repoDirOf(task.repo))
             console.log(`  cleaned worktree: ${task.identifier} (logs preserved)`)
           } catch {
             console.log(`  worktree already removed: ${task.identifier}`)

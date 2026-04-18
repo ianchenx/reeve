@@ -38,7 +38,7 @@ export interface SourceItem {
   description: string
   labels: string[]
   priority: number | null
-  repo: string            // Absolute path to the project repo
+  repo: string            // GitHub repo identifier (e.g. "acme/app")
   baseBranch: string      // Git branch to base worktree on
 }
 

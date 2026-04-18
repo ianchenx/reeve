@@ -6,15 +6,16 @@ import { registerAction } from "./registry"
 import type { ActionContext } from "./types"
 import {
   listGitHubRepos,
-  detectProjectConfig,
   fetchTeams,
   listTeamProjects,
   ensureProjectSlug,
   ensureWorkflowStates,
 } from "../project-setup"
 import { loadSettings, saveSettings } from "../config"
-import { existsSync } from "fs"
 import { getRuntimeHealth, getSetupEntryHealth } from "../runtime-health"
+import { verifyRepoExists } from "../workspace/repo-store"
+
+const REPO_REF_REGEX = /^[\w.-]+\/[\w.-]+$/
 
 function getLinearApiKey(ctx: ActionContext): string {
   return loadSettings().linearApiKey ?? ctx.config.linear?.apiKey ?? ""
@@ -206,14 +207,7 @@ registerAction({
   output: z.any(),
   requiresDaemon: false,
   async handler(ctx: ActionContext, input: { repo: string; team?: string }) {
-    const repoName = input.repo.includes("/") ? input.repo.split("/").pop()! : input.repo
-
-    // Detect setup from local path if it exists
-    let detected: { setup?: string } = {}
-    const repoPath = existsSync(input.repo) ? input.repo : null
-    if (repoPath) {
-      detected = detectProjectConfig(repoPath)
-    }
+    const repoName = input.repo.split("/").pop() ?? input.repo
 
     // Infer team from input, settings, or existing projects
     const inferredTeam = input.team || loadSettings().defaultTeam || (ctx.config.projects[0]?.team ?? "")
@@ -229,7 +223,6 @@ registerAction({
     }
 
     return {
-      setup: detected.setup,
       inferredTeam,
       teams,
       repoName,
@@ -269,7 +262,7 @@ registerAction({
   name: "projectImport",
   description: "Import a GitHub repo or local path as a managed project",
   input: z.object({
-    repo: z.string().min(1),
+    repo: z.string().regex(REPO_REF_REGEX, "repo must be 'org/repo' (e.g. 'acme/app')"),
     slug: z.string(),
     projectName: z.string().optional(),
     team: z.string().min(1),
@@ -281,6 +274,16 @@ registerAction({
   output: z.any(),
   requiresDaemon: false,
   async handler(ctx: ActionContext, input) {
+    // Physical verification: repo must exist on GitHub and be accessible.
+    // Failing here is much friendlier than failing at first dispatch.
+    const verifyError = await verifyRepoExists(input.repo)
+    if (verifyError) {
+      throw new Error(
+        `Cannot access GitHub repo '${input.repo}': ${verifyError}\n` +
+        `Confirm the repo exists, you have access, and 'gh auth status' passes.`,
+      )
+    }
+
     const apiKey = getLinearApiKey(ctx)
     let teamFixture: Awaited<ReturnType<typeof fetchTeams>>[number] | undefined
     let projectSlug = input.slug

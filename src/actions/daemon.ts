@@ -168,7 +168,7 @@ registerAction({
   input: z.object({ identifier: z.string() }),
   output: z.any(),
   requiresDaemon: false,
-  async handler(_ctx: ActionContext, input: { identifier: string }) {
+  async handler(ctx: ActionContext, input: { identifier: string }) {
     const tasks = readStateFile()
     const task = tasks.find(t =>
       t.identifier.toLowerCase() === input.identifier.toLowerCase()
@@ -177,9 +177,11 @@ registerAction({
     if (task.state === "active") return { ok: false, error: "Cannot clean active task" }
 
     const { WorkspaceManager } = await import("../workspace/manager")
+    const { RepoStore } = await import("../workspace/repo-store")
     const workspace = new WorkspaceManager()
+    const repoStore = new RepoStore(ctx.config.workspace.root)
     try {
-      await workspace.cleanWorktreeOnly(task.identifier, task.repo)
+      await workspace.cleanWorktreeOnly(task.identifier, repoStore.repoDirOf(task.repo))
       return { ok: true, cleaned: task.identifier }
     } catch {
       return { ok: true, cleaned: task.identifier, note: "Worktree already removed" }
@@ -195,16 +197,18 @@ registerAction({
   input: z.object({}),
   output: z.any(),
   requiresDaemon: false,
-  async handler() {
+  async handler(ctx: ActionContext) {
     const tasks = readStateFile()
     const done = tasks.filter(t => t.state === "done")
     const { WorkspaceManager } = await import("../workspace/manager")
+    const { RepoStore } = await import("../workspace/repo-store")
     const workspace = new WorkspaceManager()
+    const repoStore = new RepoStore(ctx.config.workspace.root)
     const cleaned: string[] = []
 
     for (const task of done) {
       try {
-        await workspace.cleanWorktreeOnly(task.identifier, task.repo)
+        await workspace.cleanWorktreeOnly(task.identifier, repoStore.repoDirOf(task.repo))
         cleaned.push(task.identifier)
       } catch {}
     }

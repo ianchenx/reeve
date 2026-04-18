@@ -1,5 +1,6 @@
 // workspace/manager.ts — Git worktree lifecycle management
-// Multi-repo: accepts repoDir per operation instead of binding to a single project.
+// Single responsibility: manage worktrees inside an already-cloned repo.
+// Callers resolve repoRef → repoDir via RepoStore before invoking these methods.
 //
 // Per-task directory layout:
 //   ~/.reeve/tasks/{id}/              ← task dir (task.taskDir)
@@ -39,7 +40,7 @@ interface GitCommandResult {
 export class WorkspaceManager {
   private tasksDir: string
 
-  constructor(tasksDir = TASKS_DIR) {
+  constructor(tasksDir: string = TASKS_DIR) {
     this.tasksDir = tasksDir
     mkdirSync(this.tasksDir, { recursive: true })
   }
@@ -53,14 +54,6 @@ export class WorkspaceManager {
    */
   async fetchLatest(repoDir: string): Promise<void> {
     await this.execInOrThrow(repoDir, ["git", "fetch", "origin"])
-  }
-
-  /**
-   * Fetch latest from origin for multiple repos in parallel.
-   */
-  async fetchLatestAll(repoDirs: string[]): Promise<void> {
-    const unique = [...new Set(repoDirs)]
-    await Promise.all(unique.map(dir => this.fetchLatest(dir)))
   }
 
   /**
@@ -146,6 +139,10 @@ export class WorkspaceManager {
    * Remove a worktree (wrapper dir + git worktree) and its branch.
    */
   async removeForTask(identifier: string, repoDir: string): Promise<void> {
+    return this.removeWorktreeAt(identifier, repoDir)
+  }
+
+  private async removeWorktreeAt(identifier: string, repoDir: string): Promise<void> {
     const sanitized = sanitizeTaskIdentifier(identifier)
     const branch = `agent/${sanitized}`
     const repoName = basename(repoDir)
@@ -288,7 +285,7 @@ export class WorkspaceManager {
     for (const entry of managed) {
       if (!activeIdentifiers.has(entry.identifier)) {
         try {
-          await this.removeForTask(entry.identifier, entry.repoDir)
+          await this.removeWorktreeAt(entry.identifier, entry.repoDir)
           removed.push(entry.identifier)
         } catch {
           // non-critical — orphan cleanup is best-effort

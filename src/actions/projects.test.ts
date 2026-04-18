@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test"
-import { mkdirSync, mkdtempSync, rmSync, readFileSync, writeFileSync } from "fs"
+import { existsSync, mkdirSync, mkdtempSync, rmSync, readFileSync, writeFileSync } from "fs"
 import { tmpdir } from "os"
 import { join, resolve } from "path"
 
@@ -104,6 +104,20 @@ mock.module("../runtime-health", () => ({
   getRuntimeHealth: () => currentRuntimeHealth,
 }))
 
+let verifyRepoExistsResult: string | null = null
+mock.module("../workspace/repo-store", () => ({
+  verifyRepoExists: async () => verifyRepoExistsResult,
+  RepoStore: class {
+    constructor(_reposRoot: string) {}
+    repoDirOf(repoRef: string): string {
+      return resolve("/fake/repos", repoRef)
+    }
+    async ensure(repoRef: string): Promise<string> {
+      return resolve("/fake/repos", repoRef)
+    }
+  },
+}))
+
 beforeAll(async () => {
   await import("./index")
 })
@@ -113,6 +127,7 @@ describe("projects actions", () => {
   const originalFetch = globalThis.fetch
 
   beforeEach(() => {
+    verifyRepoExistsResult = null
     currentSetupHealth = {
       hasApiKey: false,
       projectCount: 0,
@@ -350,6 +365,89 @@ describe("projects actions", () => {
 
     const data = result.data as { ok: boolean; slug: string; missingStates?: Array<{ name: string; error?: string }> }
     expect(data.missingStates?.map(m => m.name) ?? []).toContain("In Review")
+  })
+
+  test("projectImport keeps repo identifier when hot-adding it to a running kernel", async () => {
+    const homeDir = createTempHome()
+    process.env.HOME = homeDir
+    writeSettings(homeDir, {})
+
+    const workspaceRoot = resolve(homeDir, ".reeve", "workspaces")
+    mkdirSync(resolve(workspaceRoot, "ian", "demo", ".git"), { recursive: true })
+
+    const addedRepos: string[] = []
+    const ctx = createCtx()
+    ctx.config.workspace.root = workspaceRoot
+    ctx.kernel = {
+      addProject(project: { repo: string }) {
+        addedRepos.push(project.repo)
+      },
+      updateProject() {
+        return false
+      },
+    } as any
+
+    const result = await executeAction(ctx, "projectImport", {
+      repo: "ian/demo",
+      slug: "proj-1",
+      team: "TES",
+      baseBranch: "main",
+    })
+
+    expect(result.ok).toBe(true)
+    expect(addedRepos).toEqual(["ian/demo"])
+
+    const stored = JSON.parse(readFileSync(join(homeDir, ".reeve", "settings.json"), "utf-8"))
+    expect(stored.projects).toEqual([
+      {
+        team: "TES",
+        linear: "proj-1",
+        repo: "ian/demo",
+        baseBranch: "main",
+      },
+    ])
+  })
+
+  test("projectImport rejects unreachable repo before mutating settings", async () => {
+    const homeDir = createTempHome()
+    process.env.HOME = homeDir
+    writeSettings(homeDir, {})
+    verifyRepoExistsResult = "could not resolve to a repository"
+
+    const result = await executeAction(createCtx(), "projectImport", {
+      repo: "acme/missing",
+      slug: "proj-1",
+      team: "TES",
+      baseBranch: "main",
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain("acme/missing")
+    expect(result.error).toContain("could not resolve to a repository")
+
+    const settingsPath = join(homeDir, ".reeve", "settings.json")
+    if (existsSync(settingsPath)) {
+      const stored = JSON.parse(readFileSync(settingsPath, "utf-8"))
+      expect(stored.projects ?? []).toEqual([])
+    }
+  })
+
+  test("projectImport rejects malformed repo input via zod", async () => {
+    const homeDir = createTempHome()
+    process.env.HOME = homeDir
+    writeSettings(homeDir, {})
+
+    const result = await executeAction(createCtx(), "projectImport", {
+      repo: "/Users/me/code/app",
+      slug: "proj-1",
+      team: "TES",
+      baseBranch: "main",
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain("org/repo")
   })
 
   test("setupSave does not persist an invalid Linear key", async () => {

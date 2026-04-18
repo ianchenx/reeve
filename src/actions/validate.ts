@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { registerAction } from "./registry"
-import { loadSettings } from "../config"
+import { loadConfig, loadSettings } from "../config"
 import { existsSync } from "fs"
 import { resolve } from "path"
 import { REEVE_DIR } from "../paths"
@@ -43,14 +43,29 @@ registerAction({
         detail: `${projects.length} project(s)`,
       })
 
-      // 5. Each project repo accessible
+      // 5. Each project repo accessible (clone exists under workspace.root)
+      const { RepoStore } = await import("../workspace/repo-store")
+      const repoStore = new RepoStore(loadConfig().workspace.root)
       for (const p of projects) {
-        const repoPath = p.repo?.startsWith("/") ? p.repo : undefined
-        const repoOk = repoPath ? existsSync(repoPath) : true
+        let repoPath: string | undefined
+        let repoOk = false
+        if (p.repo) {
+          try {
+            repoPath = repoStore.repoDirOf(p.repo)
+            repoOk = existsSync(resolve(repoPath, ".git"))
+          } catch (err) {
+            checks.push({
+              name: `project ${p.linear ?? p.repo}`,
+              ok: false,
+              detail: err instanceof Error ? err.message : String(err),
+            })
+            continue
+          }
+        }
         checks.push({
           name: `project ${p.linear ?? p.repo}`,
           ok: repoOk,
-          detail: repoOk ? "accessible" : `repo not found: ${p.repo}`,
+          detail: repoOk ? `cloned at ${repoPath}` : `repo not cloned: ${p.repo}`,
         })
       }
 

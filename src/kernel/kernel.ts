@@ -14,6 +14,7 @@ import { assertTransition } from './types';
 import { StateStore } from './state';
 import { SessionLogger } from './log';
 import { WorkspaceManager } from '../workspace/manager';
+import { RepoStore } from '../workspace/repo-store';
 import {
   spawn,
   killAgent,
@@ -33,7 +34,6 @@ import {
 import { writeJsonFileAtomic } from '../persistence';
 import { syncHistoryIndexForTask } from '../history-index';
 import { captureTrace } from './trace';
-import { resolveAllRepos } from '../repo-resolver';
 import { checkForUpdate, isUpdateCheckDisabled } from '../update-check';
 
 type SSEListener = (event: {
@@ -103,6 +103,7 @@ export class Kernel {
   private store: StateStore;
   private log: SessionLogger;
   private workspace: WorkspaceManager;
+  private repoStore: RepoStore;
   private config: ReeveDaemonConfig;
   private running = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
@@ -129,13 +130,12 @@ export class Kernel {
     this.store = new StateStore(resolve(REEVE_DIR, 'state.json'));
     this.log = new SessionLogger(resolve(LOGS_DIR, 'session.jsonl'));
     this.workspace = new WorkspaceManager();
+    this.repoStore = new RepoStore(config.workspace.root);
   }
 
-  /** Find project config by repo name */
+  /** Find project config by repo identifier (org/repo). */
   private findProject(repo: string): ProjectConfig | undefined {
-    return this.config.projects.find(p =>
-      p.repo === repo || repo.endsWith(p.repo) || repo.endsWith(`/${p.repo}`)
-    );
+    return this.config.projects.find(p => p.repo === repo);
   }
 
 
@@ -144,10 +144,6 @@ export class Kernel {
   async start(): Promise<void> {
     this.running = true;
     this.store.load();
-
-    // Resolve GitHub identifiers (org/repo) to local filesystem paths.
-    // This may clone repos on demand if they're not found locally.
-    await resolveAllRepos(this.config.projects, this.config.workspace.root);
 
     await this.recover();
     await this.cleanOrphans();
@@ -396,11 +392,12 @@ export class Kernel {
       try {
         this.log.event(task.id, task.identifier, 'dispatch_start');
 
-        // Prepare workspace (wrapper dir + code/ worktree)
-        await this.workspace.fetchLatestAll([task.repo]);
+        // Resolve repo identifier → local clone (lazy: clones on first use)
+        const repoDir = await this.repoStore.ensure(task.repo);
+        await this.workspace.fetchLatest(repoDir);
         const info = await this.workspace.createForTask(
           task.identifier,
-          task.repo,
+          repoDir,
           task.baseBranch,
         );
         task.taskDir = info.taskDir;
