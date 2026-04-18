@@ -115,15 +115,15 @@ describe("cli parser regression", () => {
     expect(cli.matchedCommandName).toBe("log")
   })
 
-  test("run --no-poll", () => {
+  test("daemon command parses", () => {
     const cli = createCliApp()
     const parsed = cli.parse(
-      [...baseArgv, "run", "--no-poll"],
+      [...baseArgv, "daemon"],
       { run: false },
     )
 
-    expect(parsed.options.poll).toBe(false)
-    expect(cli.matchedCommandName).toBe("run")
+    expect(parsed.args).toEqual([])
+    expect(cli.matchedCommandName).toBe("daemon")
   })
 
   test("global --json propagates to any command", () => {

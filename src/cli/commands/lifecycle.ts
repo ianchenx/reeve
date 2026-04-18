@@ -175,6 +175,16 @@ export function buildDaemonStartedBanner(opts: {
   )
 }
 
+export async function bootstrapDaemonRuntime<T>(
+  ready: boolean,
+  createRuntime: () => Promise<T>,
+): Promise<T | null> {
+  if (!ready) {
+    return null
+  }
+  return createRuntime()
+}
+
 async function cmdRun(): Promise<void> {
   const { suppressUpdateNotification } = await import('../context')
   suppressUpdateNotification()
@@ -243,16 +253,9 @@ async function cmdRun(): Promise<void> {
 
 async function cmdDaemon(): Promise<void> {
   const config = loadConfig()
+  const { ready: initialReady } = preflight()
 
-  // createRuntimeKernel may throw if Linear apiKey is missing. Daemon tolerates
-  // that: start dashboard-only, rebuild the kernel once the user completes setup
-  // via the dashboard (projectImport triggers activation).
-  let runtime: Awaited<ReturnType<typeof createRuntimeKernel>> | null = null
-  try {
-    runtime = await createRuntimeKernel(config)
-  } catch (err) {
-    console.error(`[daemon] kernel deferred until setup completes: ${err instanceof Error ? err.message : String(err)}`)
-  }
+  let runtime = await bootstrapDaemonRuntime(initialReady, async () => createRuntimeKernel(config))
 
   let activationPromise: Promise<void> | null = null
   const activate = async (): Promise<void> => {

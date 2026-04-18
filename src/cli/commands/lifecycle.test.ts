@@ -1,5 +1,9 @@
-import { describe, expect, it } from "bun:test"
-import { buildRunNotReadyMessage, buildDaemonStartedBanner } from "./lifecycle"
+import { afterEach, describe, expect, it, mock } from "bun:test"
+import {
+  buildRunNotReadyMessage,
+  buildDaemonStartedBanner,
+  bootstrapDaemonRuntime,
+} from "./lifecycle"
 
 describe("buildRunNotReadyMessage", () => {
   it("lists all preflight issues and suggests fixes", () => {
@@ -29,5 +33,29 @@ describe("buildDaemonStartedBanner", () => {
     expect(lines[0]).toContain("http://localhost:14500")
     expect(out).toContain("/tmp/reeve.log")
     expect(out).toContain("reeve stop")
+  })
+})
+
+afterEach(() => {
+  mock.restore()
+})
+
+describe("bootstrapDaemonRuntime", () => {
+  it("defers kernel creation until setup is ready", async () => {
+    const createRuntime = mock(async () => ({ ok: true }))
+
+    const runtime = await bootstrapDaemonRuntime(false, createRuntime)
+
+    expect(runtime).toBeNull()
+    expect(createRuntime).not.toHaveBeenCalled()
+  })
+
+  it("rethrows kernel bootstrap failures when setup is otherwise ready", async () => {
+    const createRuntime = mock(async () => {
+      throw new Error("boom")
+    })
+
+    await expect(bootstrapDaemonRuntime(true, createRuntime)).rejects.toThrow("boom")
+    expect(createRuntime).toHaveBeenCalledTimes(1)
   })
 })
