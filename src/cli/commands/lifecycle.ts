@@ -163,6 +163,18 @@ export function buildRunNotReadyMessage(issues: string[]): string {
   )
 }
 
+export function buildDaemonStartedBanner(opts: {
+  pid: number
+  port: number
+  logPath: string
+}): string {
+  return (
+    `Dashboard  http://localhost:${opts.port}\n` +
+    `Log        ${opts.logPath}\n` +
+    `Stop       reeve stop  (pid ${opts.pid})`
+  )
+}
+
 async function cmdRun(): Promise<void> {
   const { suppressUpdateNotification } = await import('../context')
   suppressUpdateNotification()
@@ -222,6 +234,85 @@ async function cmdRun(): Promise<void> {
     shuttingDown = true
     await runtime.kernel.shutdown()
     stopRenderer?.()
+    removePid()
+    process.exit(0)
+  }
+  process.on('SIGINT', graceful)
+  process.on('SIGTERM', graceful)
+}
+
+async function cmdDaemon(): Promise<void> {
+  const config = loadConfig()
+
+  // createRuntimeKernel may throw if Linear apiKey is missing. Daemon tolerates
+  // that: start dashboard-only, rebuild the kernel once the user completes setup
+  // via the dashboard (projectImport triggers activation).
+  let runtime: Awaited<ReturnType<typeof createRuntimeKernel>> | null = null
+  try {
+    runtime = await createRuntimeKernel(config)
+  } catch (err) {
+    console.error(`[daemon] kernel deferred until setup completes: ${err instanceof Error ? err.message : String(err)}`)
+  }
+
+  let activationPromise: Promise<void> | null = null
+  const activate = async (): Promise<void> => {
+    if (runtime && runtime.kernel.lastTickAt > 0) return
+    if (!activationPromise) {
+      activationPromise = (async () => {
+        const nextConfig = loadConfig()
+        const { ready, issues } = preflight()
+        if (!ready) {
+          throw new Error(`Setup incomplete: ${issues.join(', ')}`)
+        }
+        const nextRuntime = await createRuntimeKernel(nextConfig)
+        await nextRuntime.kernel.start()
+        runtime = nextRuntime
+      })().finally(() => { activationPromise = null })
+    }
+    return activationPromise
+  }
+
+  const apiApp = createApiApp({
+    getCtx: () => ({
+      kernel: runtime?.kernel,
+      config: runtime?.kernel.getConfig() ?? config,
+      projects: runtime?.projects ?? [],
+      onActivate: activate,
+    }),
+  })
+
+  const app = new Hono()
+  app.route('/api', apiApp)
+  app.use('*', serveSpa(DIST_DIR))
+
+  Bun.serve({
+    port: config.dashboard.port,
+    hostname: process.env.REEVE_HOST || '0.0.0.0',
+    idleTimeout: 120,
+    fetch(req, server) {
+      if (new URL(req.url).pathname === '/api/events') {
+        server.timeout(req, 0)
+      }
+      return app.fetch(req, server)
+    },
+  })
+
+  // If setup was already complete at fork time, start polling immediately.
+  if (runtime && preflight().ready) {
+    await printStartBanner(config)
+    await runtime.kernel.start()
+  }
+
+  let shuttingDown = false
+  const graceful = async () => {
+    if (shuttingDown) {
+      runtime?.kernel.forceShutdown()
+      process.exit(1)
+    }
+    shuttingDown = true
+    if (runtime && runtime.kernel.lastTickAt > 0) {
+      await runtime.kernel.shutdown()
+    }
     removePid()
     process.exit(0)
   }
@@ -297,6 +388,14 @@ export function registerLifecycleCommands(cli: CAC): void {
     .command('run', 'Start in foreground (Ctrl+C to stop)')
     .action(async () => {
       await cmdRun()
+    })
+
+  // Internal: spawned by `reeve start`. The "Internal:" prefix signals users
+  // should not invoke it directly (cac has no hidden-command flag).
+  cli
+    .command('daemon', 'Internal: background daemon (used by `reeve start`)')
+    .action(async () => {
+      await cmdDaemon()
     })
 
   cli.command('stop', 'Stop daemon').action(async () => {
