@@ -1,0 +1,49 @@
+name: install-test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - install.sh
+      - .github/workflows/install-test.yml
+  pull_request:
+    paths:
+      - install.sh
+      - .github/workflows/install-test.yml
+  workflow_dispatch:
+
+jobs:
+  debian:
+    name: debian trixie-slim (glibc)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run install.sh end-to-end
+        run: |
+          docker run --rm \
+            -v "$PWD/install.sh:/tmp/install.sh:ro" \
+            debian:trixie-slim \
+            bash -euxc '
+              apt-get update -qq
+              apt-get install -yqq --no-install-recommends curl ca-certificates unzip
+              bash /tmp/install.sh
+              export PATH="$HOME/.bun/bin:$PATH"
+              reeve --version
+            '
+
+  alpine:
+    name: alpine 3 (musl)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run install.sh end-to-end
+        run: |
+          docker run --rm \
+            -v "$PWD/install.sh:/tmp/install.sh:ro" \
+            alpine:3 \
+            sh -euxc '
+              apk add --no-cache bash curl ca-certificates unzip libstdc++ libgcc
+              bash /tmp/install.sh
+              export PATH="$HOME/.bun/bin:$PATH"
+              reeve --version
+            '

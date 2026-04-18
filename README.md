@@ -75,8 +75,14 @@ Agents will only get better. Today's frontier model is next year's baseline. Thi
 ### 1. Install
 
 ```bash
+curl -fsSL https://reeve.run/install.sh | bash
+```
+
+Or with a package manager:
+
+```bash
+bun install -g reeve-ai
 npm install -g reeve-ai
-# or: bun install -g reeve-ai
 ```
 
 ### 2. Setup
