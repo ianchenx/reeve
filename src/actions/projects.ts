@@ -382,9 +382,7 @@ registerAction({
       try {
         await ctx.onActivate()
       } catch (err) {
-        console.warn(
-          `[projects] auto-activation failed: ${err instanceof Error ? err.message : String(err)}`,
-        )
+        console.warn('[projects] auto-activation failed:', err)
       }
     }
 

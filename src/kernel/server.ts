@@ -88,7 +88,7 @@ export function createApiApp(deps: CreateApiAppDeps): Hono<ApiEnv> {
 
   app.use('*', async (c, next) => {
     const ctx = deps.getCtx();
-    if (deps.onActivate && !ctx.onActivate) {
+    if (deps.onActivate) {
       ctx.onActivate = deps.onActivate;
     }
     c.set('actionCtx', ctx);
