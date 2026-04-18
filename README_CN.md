@@ -85,24 +85,23 @@ bun install -g reeve-ai
 npm install -g reeve-ai
 ```
 
-### 2. 配置
+### 2. 启动 Reeve —— 二选一
 
+**▸ 终端**
 ```bash
-reeve init
+reeve init                  # 交互式向导
+reeve run                   # 前台运行（Ctrl+C 停止）
 ```
 
-配置向导会引导你完成：输入 Linear API Key → 选择团队 → 导入仓库 → 选择代理。
-
-> 也可以跳过 `reeve init`，直接运行 `reeve run`，通过 `http://localhost:14500` 的 Web 界面完成配置。
-
-### 3. 启动守护进程
-
+**▸ 浏览器**
 ```bash
 reeve start                 # 后台守护进程
-reeve run                   # 或前台运行（Ctrl+C 停止）
+# 打开 http://localhost:14500 完成配置并观察
 ```
 
-### 4. 像往常一样指派任务
+两种方式引导你完成同样的输入：Linear API Key → 团队 → 仓库 → 代理。
+
+### 3. 像往常一样指派任务
 
 打开你的 Linear 项目，创建一个工单描述你想要的改动，将状态拖至 **Todo**。然后去喝杯咖啡。
 

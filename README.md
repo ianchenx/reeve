@@ -85,24 +85,23 @@ bun install -g reeve-ai
 npm install -g reeve-ai
 ```
 
-### 2. Setup
+### 2. Start Reeve — pick one
 
+**▸ Terminal**
 ```bash
-reeve init
+reeve init                  # Interactive wizard
+reeve run                   # Foreground (Ctrl+C to stop)
 ```
 
-The wizard walks you through: Linear API key → select team → import a repo → choose agent.
-
-> You can also skip `reeve init` and run `reeve run` directly — complete setup through the web dashboard at `http://localhost:14500`.
-
-### 3. Start the daemon
-
+**▸ Browser**
 ```bash
 reeve start                 # Background daemon
-reeve run                   # Or foreground (Ctrl+C to stop)
+# open http://localhost:14500 to finish setup and watch
 ```
 
-### 4. Assign a task like you always do
+Either flow walks you through the same inputs: Linear API key → team → repo → agent.
+
+### 3. Assign a task like you always do
 
 Open your Linear project, create an issue describing the change you want, and drag it to **Todo**. Then go grab a coffee.
 
