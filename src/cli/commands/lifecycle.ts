@@ -7,7 +7,7 @@ import { Hono } from 'hono'
 import { loadConfig, getSettingsPath, loadSettings } from '../../config'
 import { getRuntimeHealth } from '../../runtime-health'
 import { createApiApp, serveSpa } from '../../kernel/server'
-import { printAnimatedBanner, printStaticLogo, renderBox } from '../../kernel/banner'
+import { printAnimatedBanner } from '../../kernel/banner'
 import { readPid, writePid, removePid } from '../../daemon-pid'
 import { spawnPath } from '../../utils/path'
 
@@ -78,23 +78,18 @@ async function cmdInit(): Promise<void> {
   return runInit()
 }
 
+export function buildAlreadyRunningMessage(pid: number): string {
+  return `reeve is already running (pid ${pid}). Run 'reeve stop' first.`
+}
+
 async function cmdStart(): Promise<void> {
   const existingPid = readPid()
   if (existingPid) {
-    console.error(`reeve is already running (pid: ${existingPid}). Run 'reeve stop' first.`)
+    console.error(buildAlreadyRunningMessage(existingPid))
     process.exit(1)
   }
 
   const config = loadConfig()
-  const { ready, issues } = preflight()
-  if (!ready) {
-    console.error(`reeve start blocked: setup incomplete`)
-    for (const issue of issues) {
-      console.error(`  - ${issue}`)
-    }
-    console.error(`Run 'reeve doctor' for full diagnostics.`)
-    process.exit(1)
-  }
 
   const cliPath = new URL(import.meta.url).pathname
   const logDir = resolve(getSettingsPath(), '..', 'logs')
@@ -116,9 +111,8 @@ async function cmdStart(): Promise<void> {
     if (loginPath) daemonPath = loginPath
   } catch { /* fall back to spawnPath() */ }
 
-  // Fork daemon — it must enter via app.ts `run` command
   const appPath = resolve(dirname(cliPath), '..', 'app.ts')
-  const child = Bun.spawn(['bun', 'run', appPath, 'run'], {
+  const child = Bun.spawn(['bun', 'run', appPath, 'daemon'], {
     stdout: logFd,
     stderr: logFd,
     stdin: 'ignore',
@@ -140,17 +134,11 @@ async function cmdStart(): Promise<void> {
     process.exit(1)
   }
 
-  printStaticLogo()
-  const BOLD = '\x1b[1m'
-  const RESET = '\x1b[0m'
-  const DIM = '\x1b[2m'
-  console.log(renderBox([
-    `${BOLD}reeve${RESET} started ${DIM}(pid: ${child.pid})${RESET}`,
-    '',
-    `Dashboard  http://localhost:${config.dashboard.port}`,
-    `Log        ${logPath}`,
-    `Stop       reeve stop`,
-  ]))
+  console.log(buildDaemonStartedBanner({
+    pid: child.pid,
+    port: config.dashboard.port,
+    logPath,
+  }))
 }
 
 export function buildRunNotReadyMessage(issues: string[]): string {

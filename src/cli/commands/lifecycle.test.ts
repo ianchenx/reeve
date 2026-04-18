@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, mock } from "bun:test"
 import {
   buildRunNotReadyMessage,
   buildDaemonStartedBanner,
+  buildAlreadyRunningMessage,
   bootstrapDaemonRuntime,
 } from "./lifecycle"
 
@@ -33,6 +34,14 @@ describe("buildDaemonStartedBanner", () => {
     expect(lines[0]).toContain("http://localhost:14500")
     expect(out).toContain("/tmp/reeve.log")
     expect(out).toContain("reeve stop")
+  })
+})
+
+describe("buildAlreadyRunningMessage", () => {
+  it("names the existing pid and suggests stop", () => {
+    const msg = buildAlreadyRunningMessage(9999)
+    expect(msg).toContain("9999")
+    expect(msg).toContain("reeve stop")
   })
 })
 
