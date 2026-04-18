@@ -6,17 +6,13 @@
  *   1. Connect Linear and verify local GitHub tooling
  *   2. Import first project (reuses AddProjectSheet)
  *
- * After both are complete, tells user to restart the daemon.
+ * After both are complete, exits the wizard.
  */
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import {
-  fetchSetupStatus,
-  saveSetup,
-  activateRuntime,
-} from "@/api"
+import { fetchSetupStatus, saveSetup } from "@/api"
 import type { SetupStatus } from "@/api"
 import { AddProjectSheet } from "@/components/projects/AddProjectSheet"
 import {
@@ -27,7 +23,6 @@ import {
   AlertTriangleIcon,
   ExternalLinkIcon,
   ArrowRightIcon,
-  PlayIcon,
   GithubIcon,
   GitCommitHorizontalIcon,
   CpuIcon,
@@ -38,7 +33,7 @@ interface SetupWizardProps {
   onComplete: () => void
 }
 
-type WizardStep = "loading" | "connect" | "project" | "done"
+type WizardStep = "loading" | "connect" | "project"
 
 export function SetupWizard({ onComplete }: SetupWizardProps) {
   const [status, setStatus] = useState<SetupStatus | null>(null)
@@ -46,23 +41,19 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
   const [linearKey, setLinearKey] = useState("")
   const [saving, setSaving] = useState(false)
-  const [starting, setStarting] = useState(false)
   const [linearError, setLinearError] = useState<string | null>(null)
-  const [startError, setStartError] = useState<string | null>(null)
   const [editingLinearKey, setEditingLinearKey] = useState(false)
 
   const [addProjectOpen, setAddProjectOpen] = useState(false)
 
   const applyStatus = useCallback((nextStatus: SetupStatus) => {
     setStatus(nextStatus)
-    if (nextStatus.ready) {
+    if (nextStatus.ready || nextStatus.configured) {
       onComplete()
       return
     }
     if (!nextStatus.hasApiKey || !nextStatus.githubReady || !nextStatus.codexInstalled) {
       setStep("connect")
-    } else if (nextStatus.configured) {
-      setStep("done")
     } else {
       setStep("project")
     }
@@ -104,24 +95,6 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   const handleProjectAdded = () => {
     setAddProjectOpen(false)
     fetchSetupStatus().then(applyStatus).catch(() => {})
-  }
-
-  const handleStart = async () => {
-    setStarting(true)
-    setStartError(null)
-
-    try {
-      const result = await activateRuntime()
-      if (!result.ok) {
-        setStartError(result.error ?? "Failed to start Reeve.")
-        return
-      }
-      onComplete()
-    } catch {
-      setStartError("Failed to start Reeve.")
-    } finally {
-      setStarting(false)
-    }
   }
 
   if (step === "loading") {
@@ -428,10 +401,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                     >
                       Add Another
                     </Button>
-                    <Button
-                      onClick={() => setStep("done")}
-                      className="flex-1"
-                    >
+                    <Button onClick={onComplete} className="flex-1">
                       Continue
                       <ArrowRightIcon className="h-4 w-4 ml-2" />
                     </Button>
@@ -446,41 +416,6 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                   Import Project
                 </Button>
               )}
-            </div>
-          )}
-
-          {step === "done" && (
-            <div className="space-y-5 text-center">
-              <div className="flex justify-center">
-                <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                  <CheckCircle2Icon className="h-6 w-6 text-emerald-500" />
-                </div>
-              </div>
-              <div>
-                <h2 className="font-medium">Ready to Start</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Your setup is saved. Start Reeve to begin monitoring your projects.
-                </p>
-              </div>
-              {startError && (
-                <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-sm text-red-500">
-                  <AlertTriangleIcon className="h-4 w-4 shrink-0" />
-                  {startError}
-                </div>
-              )}
-              <Button onClick={handleStart} disabled={starting} className="w-full">
-                {starting ? (
-                  <>
-                    <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-                    Starting Reeve…
-                  </>
-                ) : (
-                  <>
-                    <PlayIcon className="h-4 w-4 mr-2" />
-                    Start Reeve
-                  </>
-                )}
-              </Button>
             </div>
           )}
         </div>

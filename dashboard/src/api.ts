@@ -284,13 +284,6 @@ export async function saveSetup(data: {
   return res.json()
 }
 
-export async function activateRuntime(): Promise<{ ok: boolean; error?: string }> {
-  const res = await authFetch(`${BASE}/api/runtime/activate`, {
-    method: "POST",
-  })
-  return res.json()
-}
-
 // ── Update Check ───────────────────────────────────────
 
 export interface VersionInfo {

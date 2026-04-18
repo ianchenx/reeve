@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react"
-import { Loader2Icon, PlayIcon } from "lucide-react"
 
-import { activateRuntime, fetchSetupCheck, type SetupCheck } from "@/api"
+import { fetchSetupCheck, type SetupCheck } from "@/api"
 import { ConcurrencyPill } from "@/components/shared/ConcurrencyPill"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 function RuntimeBadge({ active }: { active: boolean }) {
@@ -31,8 +29,6 @@ function RuntimeBadge({ active }: { active: boolean }) {
 
 export function RuntimeControls() {
   const [status, setStatus] = useState<SetupCheck | null>(null)
-  const [starting, setStarting] = useState(false)
-  const [startError, setStartError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -43,7 +39,6 @@ export function RuntimeControls() {
         const next = await fetchSetupCheck()
         if (!cancelled) {
           setStatus(next)
-          if (next.runtimeActive) setStartError(null)
         }
       } catch {
         // Keep the last known state; the shell can still render while the API reconnects.
@@ -61,54 +56,14 @@ export function RuntimeControls() {
     }
   }, [])
 
-  const handleStart = async () => {
-    setStarting(true)
-    setStartError(null)
-
-    try {
-      const result = await activateRuntime()
-      if (!result.ok) {
-        setStartError(result.error ?? "Start failed")
-        return
-      }
-
-      const next = await fetchSetupCheck()
-      setStatus(next)
-    } catch {
-      setStartError("Start failed")
-    } finally {
-      setStarting(false)
-    }
-  }
-
   if (!status?.configured) {
     return <ConcurrencyPill />
   }
 
-  if (status.runtimeActive) {
-    return (
-      <div className="flex items-center gap-2">
-        <RuntimeBadge active />
-        <ConcurrencyPill />
-      </div>
-    )
-  }
-
   return (
     <div className="flex items-center gap-2">
-      <RuntimeBadge active={false} />
-      {startError && (
-        <span
-          className="hidden text-xs text-status-error lg:block"
-          title={startError}
-        >
-          Start failed
-        </span>
-      )}
-      <Button size="sm" onClick={handleStart} disabled={starting}>
-        {starting ? <Loader2Icon className="animate-spin" /> : <PlayIcon />}
-        {starting ? "Starting..." : "Start Reeve"}
-      </Button>
+      <RuntimeBadge active={status.runtimeActive} />
+      <ConcurrencyPill />
     </div>
   )
 }
