@@ -6,17 +6,19 @@
  */
 import { useCallback, useMemo, useState } from "react"
 import { useReeveStore } from "@/hooks/useReeveStore"
+import { useConfig } from "@/hooks/useConfig"
 import { LinearBoard } from "@/components/board/LinearBoard"
 import { IdentifierBadge } from "@/components/shared/IdentifierBadge"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useNavigate } from "@tanstack/react-router"
-import { Trash2Icon } from "lucide-react"
+import { Trash2Icon, ExternalLinkIcon } from "lucide-react"
 import { cleanTask, cleanAllDone } from "@/api"
 import type { TaskEntry, DisplayEvent } from "@/types"
 
 export function BoardPage() {
   const store = useReeveStore()
+  const { config } = useConfig()
   const navigate = useNavigate()
 
   const handleNavigate = useCallback((page: string) => {
@@ -60,13 +62,37 @@ export function BoardPage() {
   const hasQueued = queued.length > 0
   const hasDone = done.length > 0
 
+  const projects = config?.projects ?? []
+  const pollSeconds = Math.max(1, Math.round((config?.polling.intervalMs ?? 60_000) / 1000))
+  const soloProject = projects.length === 1 ? projects[0] : null
+  const soloProjectLabel = soloProject
+    ? (soloProject.name ?? soloProject.repo.split("/").pop() ?? soloProject.slug)
+    : ""
+
   return (
     <div className="flex flex-col h-full">
       {/* ── Agent list (LinearBoard) ── */}
       <div className="flex-1 overflow-y-auto">
         {!hasActive && !hasQueued && !hasDone && (
-          <div className="py-20 text-center">
-            <p className="text-sm text-muted-foreground/60">Idle — waiting for issues from Linear</p>
+          <div className="py-20 text-center max-w-sm mx-auto px-6">
+            <p className="text-sm text-muted-foreground/80">
+              Reeve polls Linear every {pollSeconds}s for issues in <span className="font-medium">Todo</span>.
+            </p>
+            <p className="text-xs text-muted-foreground/50 mt-1.5">
+              Create one to get started.
+            </p>
+            {soloProject && (
+              <Button asChild variant="outline" size="sm" className="mt-5 gap-2">
+                <a
+                  href={`https://linear.app/project/${soloProject.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open {soloProjectLabel} in Linear
+                  <ExternalLinkIcon className="h-3.5 w-3.5" />
+                </a>
+              </Button>
+            )}
           </div>
         )}
 
