@@ -31,12 +31,22 @@ reeve doctor || true
 
 echo ""
 echo "==> Daemon start/stop"
-reeve run &
-PID=$!
-sleep 3
-CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:14500/api/status 2>/dev/null || echo "000")
-kill $PID 2>/dev/null || true
-wait $PID 2>/dev/null || true
+# basic mode has no settings.json mounted; `reeve run` fails preflight by design,
+# so use `reeve start` (tolerant of empty config) for basic. full mode has real
+# settings, so exercise the strict `reeve run` path too.
+if [ "$MODE" = "full" ]; then
+  reeve run &
+  PID=$!
+  sleep 3
+  CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:14500/api/status 2>/dev/null || echo "000")
+  kill $PID 2>/dev/null || true
+  wait $PID 2>/dev/null || true
+else
+  reeve start >/dev/null
+  sleep 3
+  CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:14500/api/status 2>/dev/null || echo "000")
+  reeve stop >/dev/null 2>&1 || true
+fi
 
 if [ "$CODE" = "200" ]; then
   echo "PASS: HTTP 200"
