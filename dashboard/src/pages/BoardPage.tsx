@@ -10,7 +10,7 @@ import { useConfig } from "@/hooks/useConfig"
 import { LinearBoard } from "@/components/board/LinearBoard"
 import { IdentifierBadge } from "@/components/shared/IdentifierBadge"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { useNavigate } from "@tanstack/react-router"
 import { Trash2Icon, ExternalLinkIcon } from "lucide-react"
 import { cleanTask, cleanAllDone } from "@/api"
@@ -82,16 +82,15 @@ export function BoardPage() {
               Create one to get started.
             </p>
             {soloProject && (
-              <Button asChild variant="outline" size="sm" className="mt-5 gap-2">
-                <a
-                  href={`https://linear.app/project/${soloProject.slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Open {soloProjectLabel} in Linear
-                  <ExternalLinkIcon className="h-3.5 w-3.5" />
-                </a>
-              </Button>
+              <a
+                href={`https://linear.app/project/${soloProject.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonVariants({ variant: "outline", size: "sm" }) + " mt-5 gap-2"}
+              >
+                Open {soloProjectLabel} in Linear
+                <ExternalLinkIcon className="h-3.5 w-3.5" />
+              </a>
             )}
           </div>
         )}
