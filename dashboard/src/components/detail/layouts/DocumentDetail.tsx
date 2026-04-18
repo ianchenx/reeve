@@ -11,7 +11,6 @@
 import type { ReactNode } from "react"
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { IdentifierBadge } from "@/components/shared/IdentifierBadge"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { ModelAvatar, ModelLabel } from "@/components/shared/ModelAvatar"
@@ -26,7 +25,7 @@ import { useConfig } from "@/hooks/useConfig"
 import { useDebugMode } from "@/hooks/useDebugMode"
 import type { DetailLayoutProps } from "./types"
 import type { HistoryEntry } from "@/types"
-import { RotateCcwIcon, ArrowLeftIcon, ClockIcon, GitPullRequestIcon, ActivityIcon, CoinsIcon, FileTextIcon, AlertTriangleIcon, XCircleIcon } from "lucide-react"
+import { ArrowLeftIcon, ClockIcon, GitPullRequestIcon, ActivityIcon, CoinsIcon, FileTextIcon, AlertTriangleIcon } from "lucide-react"
 
 function Metric({ icon: Icon, label, value }: { icon: typeof ClockIcon; label: string; value: ReactNode }) {
   return (
@@ -81,7 +80,7 @@ function AttemptPill({ entry, isActive, onClick }: { entry: HistoryEntry; isActi
 }
 
 export function DocumentDetail({ data, onBack }: DetailLayoutProps) {
-  const { meta, sessionEvents, prompt, relatedAttempts, retrying, markingFailed, handleRetry, handleMarkFailed } = data
+  const { meta, sessionEvents, prompt, relatedAttempts } = data
   const navigate = useNavigate()
   const { config } = useConfig()
   // ?debug in URL or localStorage enables developer panels
@@ -108,7 +107,6 @@ export function DocumentDetail({ data, onBack }: DetailLayoutProps) {
   }
 
   const outcomeStatus = meta.outcome === "completed" ? "completed" : meta.outcome === "failed" ? "failed" : "running"
-  const canMarkFailed = meta.outcome !== "completed" && meta.outcome !== "failed"
   const phaseLabel = meta.stage || meta.phase || "implement"
 
   const sortedAttempts = relatedAttempts.length > 1
@@ -136,16 +134,6 @@ export function DocumentDetail({ data, onBack }: DetailLayoutProps) {
             </div>
             <h1 className="text-lg font-semibold tracking-tight leading-snug">{meta.title}</h1>
           </div>
-          {meta.outcome === "failed" && (
-            <Button variant="outline" size="sm" onClick={handleRetry} disabled={retrying} className="text-xs gap-1.5 shrink-0">
-              <RotateCcwIcon className="h-3 w-3" /> Retry
-            </Button>
-          )}
-          {canMarkFailed && (
-            <Button variant="outline" size="sm" onClick={handleMarkFailed} disabled={markingFailed} className="text-xs gap-1.5 shrink-0">
-              <XCircleIcon className="h-3 w-3" /> Mark Failed
-            </Button>
-          )}
         </div>
 
         <div className="flex flex-wrap gap-x-6 gap-y-2">

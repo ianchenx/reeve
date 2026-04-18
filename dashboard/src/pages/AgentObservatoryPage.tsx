@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef, useState } from "react"
 import type { ComponentType } from "react"
-import { fetchLiveSession, fetchHistory, killProcess } from "@/api"
+import { fetchLiveSession, fetchHistory, cancelTask } from "@/api"
 import { useReeveStore } from "@/hooks/useReeveStore"
 import { usePreferences } from "@/hooks/usePreferences"
 import {
@@ -49,7 +49,7 @@ export function AgentObservatoryPage() {
   const handleKill = async () => {
     setKilling(true)
     try {
-      await killProcess(agentId)
+      await cancelTask(agentId)
       // Don't navigate — let the phase machine handle transition
     } catch {
       setKilling(false)

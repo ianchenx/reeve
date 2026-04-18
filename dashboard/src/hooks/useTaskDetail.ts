@@ -4,8 +4,8 @@
  * Returns: meta, sessionEvents, prompt, relatedAttempts, loading state, and task action handlers.
  * Each history entry (implement, review, etc.) has its own page — no cross-agent tabs needed.
  */
-import { useEffect, useState, useCallback } from "react"
-import { fetchHistoryDetail, fetchSession, fetchPrompt, fetchIssueAttempts, retryTask, markFailed } from "@/api"
+import { useEffect, useState } from "react"
+import { fetchHistoryDetail, fetchSession, fetchPrompt, fetchIssueAttempts } from "@/api"
 import type { SessionEvent } from "@/components/detail/SessionViewer"
 import type { HistoryEntry } from "@/types"
 
@@ -15,10 +15,6 @@ export interface TaskDetailData {
   prompt: string
   relatedAttempts: HistoryEntry[]
   loading: boolean
-  retrying: boolean
-  markingFailed: boolean
-  handleRetry: () => void
-  handleMarkFailed: () => void
 }
 
 export function useTaskDetail(taskId: string): TaskDetailData {
@@ -27,8 +23,6 @@ export function useTaskDetail(taskId: string): TaskDetailData {
   const [prompt, setPrompt] = useState<string>("")
   const [relatedAttempts, setRelatedAttempts] = useState<HistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [retrying, setRetrying] = useState(false)
-  const [markingFailed, setMarkingFailed] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -50,29 +44,11 @@ export function useTaskDetail(taskId: string): TaskDetailData {
     }).finally(() => setLoading(false))
   }, [taskId])
 
-  const handleRetry = useCallback(async () => {
-    if (!meta) return
-    setRetrying(true)
-    try { await retryTask(meta.identifier) }
-    finally { setRetrying(false) }
-  }, [meta])
-
-  const handleMarkFailed = useCallback(async () => {
-    if (!meta) return
-    setMarkingFailed(true)
-    try { await markFailed(meta.identifier) }
-    finally { setMarkingFailed(false) }
-  }, [meta])
-
   return {
     meta,
     sessionEvents,
     prompt,
     relatedAttempts,
     loading,
-    retrying,
-    markingFailed,
-    handleRetry,
-    handleMarkFailed,
   }
 }

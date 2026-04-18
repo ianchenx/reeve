@@ -85,20 +85,8 @@ async function authPost(url: string): Promise<Response> {
   return res
 }
 
-export async function triggerPoll(): Promise<void> {
-  await authPost(`${BASE}/api/poll`)
-}
-
-export async function killProcess(identifier: string): Promise<void> {
-  await authPost(`${BASE}/api/kill/${encodeURIComponent(identifier)}`)
-}
-
-export async function retryTask(identifier: string): Promise<void> {
-  await authPost(`${BASE}/api/retry/${encodeURIComponent(identifier)}`)
-}
-
-export async function markFailed(identifier: string): Promise<void> {
-  await authPost(`${BASE}/api/mark-failed/${encodeURIComponent(identifier)}`)
+export async function cancelTask(identifier: string): Promise<void> {
+  await authPost(`${BASE}/api/tasks/${encodeURIComponent(identifier)}/cancel`)
 }
 
 export async function fetchWorktreeStatus(identifier: string): Promise<WorktreeStatusResponse> {
