@@ -6,6 +6,7 @@ import type { SourceDisposition } from "../source"
 import type { SourceItem } from "../types"
 import { LinearClient } from "../../linear/client"
 import type { LinearConfig, ProjectConfig } from "../../config"
+import { spawnPath } from "../../utils/path"
 
 export class LinearSource implements Source {
   private client: LinearClient
@@ -90,7 +91,7 @@ export class LinearSource implements Source {
           stderr: 'pipe',
           env: {
             ...process.env,
-            PATH: `${process.env.PATH}:/usr/local/bin:/opt/homebrew/bin`,
+            PATH: spawnPath(),
           },
         },
       )

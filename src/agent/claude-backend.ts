@@ -13,6 +13,7 @@ import { prepareClaudeSandbox } from './claude-sandbox';
 import { parseClaudeLine } from './claude-parser';
 import { collectStderr, killProcessTree } from './process-utils';
 import { noopLogger } from './types';
+import { spawnPath } from '../utils/path';
 import type {
   ACPEvent,
   AgentEventHandler,
@@ -111,7 +112,7 @@ export const claudeBackend: AgentBackend = {
       env: {
         ...process.env,
         ...(options.sandbox?.env ?? {}),
-        PATH: `${process.env.PATH}:/usr/local/bin:/opt/homebrew/bin`,
+        PATH: spawnPath(),
       },
     });
 

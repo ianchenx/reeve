@@ -28,6 +28,7 @@ import { mapCodexNotification } from './codex-mapper';
 import { prepareCodexSandbox } from './codex-sandbox';
 import { collectStderr, killProcessTree } from './process-utils';
 import { noopLogger } from './types';
+import { spawnPath } from '../utils/path';
 import type {
   AgentEventHandler,
   AgentTask,
@@ -124,7 +125,7 @@ export const codexBackend: AgentBackend = {
       env: {
         ...process.env,
         ...(options.sandbox?.env ?? {}),
-        PATH: `${process.env.PATH}:/usr/local/bin:/opt/homebrew/bin`,
+        PATH: spawnPath(),
       },
     });
 
