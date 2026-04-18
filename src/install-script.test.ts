@@ -81,6 +81,9 @@ exit 1
       ...process.env,
       BUN_INSTALL: bunInstall,
       HOME: home,
+      // Pin REEVE_DIR to the sandboxed home so we aren't fooled by a
+      // REEVE_DIR leaked from the outer environment (CI sets one globally).
+      REEVE_DIR: join(home, ".reeve"),
       PATH: pathHasBunDir ? `${bunBin}:${toolBin}:/usr/bin:/bin` : `${toolBin}:/usr/bin:/bin`,
     },
     stderr: "pipe",
