@@ -184,6 +184,7 @@ main() {
     info  "Run ${_bold}$BIN_NAME --help${_reset}${_dim} to see all commands, or ${_bold}$BIN_NAME start${_reset}${_dim} to launch the daemon."
   else
     info  "Next: run ${_bold}$BIN_NAME init${_reset}${_dim} to configure Linear + pick an agent."
+    info  "      ${_bold}$BIN_NAME doctor${_reset}${_dim} checks your setup."
     info  "      ${_bold}$BIN_NAME --help${_reset}${_dim} lists every command."
     info  "      Docs: $REPO_URL"
   fi
