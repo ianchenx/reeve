@@ -126,13 +126,15 @@ export function createApiApp(deps: CreateApiAppDeps): Hono<ApiEnv> {
   app.get('/validate', actionRoute('validate'));
 
   app.get('/events', (c) => {
-    const kernel = c.get('actionCtx').kernel as Kernel;
+    const kernel = c.get('actionCtx').kernel;
     return streamSSE(c, async (stream) => {
-      await stream.writeSSE({ data: JSON.stringify({ type: 'init', tasks: kernel.tasks }) });
+      await stream.writeSSE({ data: JSON.stringify({ type: 'init', tasks: kernel?.tasks ?? [] }) });
 
-      const unsub = kernel.onSSE((event) => {
-        void stream.writeSSE({ data: JSON.stringify(event) }).catch(() => {});
-      });
+      const unsub = kernel
+        ? kernel.onSSE((event) => {
+            void stream.writeSSE({ data: JSON.stringify(event) }).catch(() => {});
+          })
+        : () => {};
 
       const heartbeat = setInterval(() => {
         void stream.writeSSE({ event: 'heartbeat', data: '{}' }).catch(() => {});

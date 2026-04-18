@@ -285,6 +285,38 @@ describe("SSE", () => {
 
     controller.abort()
   })
+
+  it("GET /events returns an empty init event when kernel is not active", async () => {
+    const idleCtx: ActionContext = {
+      config: kernel.getConfig(),
+      projects: kernel.getConfig().projects.map(p => ({ slug: p.slug, repo: p.repo })),
+    }
+    const idleApp = createApiApp({
+      getCtx: () => idleCtx,
+    })
+    const idleServer = Bun.serve({
+      port: 0,
+      fetch: idleApp.fetch,
+    })
+    const idleBase = `http://localhost:${idleServer.port}`
+
+    try {
+      const controller = new AbortController()
+      const res = await fetch(`${idleBase}/events`, { signal: controller.signal })
+      expect(res.status).toBe(200)
+      expect(res.headers.get("content-type")).toContain("text/event-stream")
+
+      const reader = res.body!.getReader()
+      const { value } = await reader.read()
+      const text = new TextDecoder().decode(value)
+      expect(text).toContain('"type":"init"')
+      expect(text).toContain('"tasks":[]')
+
+      controller.abort()
+    } finally {
+      idleServer.stop()
+    }
+  })
 })
 
 describe("Hot-reload behavior", () => {
