@@ -6,6 +6,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- `reeve update` — self-upgrade to the latest reeve-ai on npm. Detects daemon state: idle daemon is automatically restarted after upgrade; active tasks trigger a prompt (never kills running agents without confirmation). Also supports `--check` for a non-destructive version probe
+- Startup banner and post-command update notification now point users at `reeve update` instead of leaving them to figure out the upgrade path
+
 ## [0.0.5] - 2026-04-18
 
 ### Fixed

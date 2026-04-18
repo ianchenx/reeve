@@ -69,7 +69,7 @@ export function showUpdateNotification(json = false): void {
   const cache = readUpdateCache()
   if (cache && hasNewerVersion(cache.current, cache.latest)) {
     process.stderr.write(
-      `\n  Update available: ${cache.current} \u2192 ${cache.latest}\n\n`,
+      `\n  Update available: ${cache.current} \u2192 ${cache.latest}\n  Run: reeve update\n\n`,
     )
   }
 

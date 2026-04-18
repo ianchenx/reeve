@@ -14,6 +14,7 @@ import { registerTaskCommands } from './commands/tasks'
 import { registerProjectCommands } from './commands/projects'
 import { registerSystemCommands } from './commands/system'
 import { registerReviewCommand } from './commands/review'
+import { registerUpdateCommand } from './commands/update'
 
 const pkgJson = JSON.parse(
   readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'),
@@ -30,6 +31,7 @@ export function createCliApp() {
   registerProjectCommands(cli)
   registerSystemCommands(cli)
   registerReviewCommand(cli)
+  registerUpdateCommand(cli)
 
   cli.help()
 

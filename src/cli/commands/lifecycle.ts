@@ -2,43 +2,16 @@
 
 import type { CAC } from 'cac'
 import { resolve, dirname } from 'path'
-import { existsSync, readFileSync, writeFileSync, unlinkSync, openSync } from 'fs'
+import { existsSync, readFileSync, openSync } from 'fs'
 import { Hono } from 'hono'
 import { loadConfig, getSettingsPath, loadSettings } from '../../config'
 import { getRuntimeHealth } from '../../runtime-health'
 import { createApiApp, serveSpa } from '../../kernel/server'
 import { printAnimatedBanner, printStaticLogo, renderBox } from '../../kernel/banner'
+import { readPid, writePid, removePid } from '../../daemon-pid'
 
 const REEVE_ROOT = resolve(dirname(new URL(import.meta.url).pathname), '../../..')
 const DIST_DIR = new URL('../../../dashboard/dist', import.meta.url).pathname
-
-// ── PID file management ─────────────────────────────────
-
-function getPidPath(): string {
-  return resolve(getSettingsPath(), '..', 'reeve.pid')
-}
-
-function readPid(): number | null {
-  const pidPath = getPidPath()
-  if (!existsSync(pidPath)) return null
-  const pid = parseInt(readFileSync(pidPath, 'utf-8').trim())
-  if (isNaN(pid)) return null
-  try {
-    process.kill(pid, 0)
-    return pid
-  } catch {
-    try { unlinkSync(pidPath) } catch {}
-    return null
-  }
-}
-
-function writePid(pid: number): void {
-  writeFileSync(getPidPath(), String(pid))
-}
-
-function removePid(): void {
-  try { unlinkSync(getPidPath()) } catch {}
-}
 
 // ── Kernel bootstrap ─────────────────────────────────────
 

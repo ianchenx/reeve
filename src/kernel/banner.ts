@@ -105,6 +105,7 @@ export async function printAnimatedBanner(info: {
   const cache = readUpdateCache();
   if (shouldShowUpdateHint(info.version, cache)) {
     lines.push(`${BOLD}reeve${RESET} v${info.version} ${DIM}→ ${cache!.latest} available${RESET}`);
+    lines.push(`${DIM}run ${RESET}${BOLD}reeve update${RESET}${DIM} to upgrade${RESET}`);
   } else {
     lines.push(`${BOLD}reeve${RESET} v${info.version}`);
   }
