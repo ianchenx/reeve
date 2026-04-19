@@ -49,7 +49,11 @@ export function registerProjectCommands(cli: CAC): void {
       }
 
       const team = opts.team || detected.inferredTeam
-      if (!team) { console.error('\u274c Could not infer team. Use --team KEY'); process.exit(1) }
+      if (!team) {
+        console.error('\u274c Could not infer team. Use --team KEY')
+        console.error('   Run reeve init first to configure your default team.')
+        process.exit(1)
+      }
       const projectName = detected.repoName || repo.split('/').pop() || repo
 
       const detect = detectDefaultBranch(repo)
