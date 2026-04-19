@@ -138,6 +138,7 @@ async function cmdStart(): Promise<void> {
     pid: child.pid,
     port: config.dashboard.port,
     logPath,
+    dashboardEnabled: config.dashboard.enabled,
   }))
 }
 
@@ -155,9 +156,13 @@ export function buildDaemonStartedBanner(opts: {
   pid: number
   port: number
   logPath: string
+  dashboardEnabled: boolean
 }): string {
+  const head = opts.dashboardEnabled
+    ? `Dashboard  http://localhost:${opts.port}`
+    : `Mode       CLI-only (dashboard disabled)`
   return (
-    `Dashboard  http://localhost:${opts.port}\n` +
+    `${head}\n` +
     `Log        ${opts.logPath}\n` +
     `Stop       reeve stop  (pid ${opts.pid})`
   )
@@ -241,52 +246,62 @@ async function cmdRun(): Promise<void> {
 
 async function cmdDaemon(): Promise<void> {
   const config = loadConfig()
-  const { ready: initialReady } = preflight()
+  const { ready: initialReady, issues } = preflight()
+
+  // Without the dashboard there is no UI to finish setup, so the daemon
+  // cannot recover from a not-ready state on its own. Fail fast instead of
+  // sitting idle forever.
+  if (!config.dashboard.enabled && !initialReady) {
+    console.error(buildRunNotReadyMessage(issues))
+    process.exit(1)
+  }
 
   let runtime = await bootstrapDaemonRuntime(initialReady, async () => createRuntimeKernel(config))
 
-  let activationPromise: Promise<void> | null = null
-  const activate = async (): Promise<void> => {
-    if (runtime && runtime.kernel.lastTickAt > 0) return
-    if (!activationPromise) {
-      activationPromise = (async () => {
-        const nextConfig = loadConfig()
-        const { ready, issues } = preflight()
-        if (!ready) {
-          throw new Error(`Setup incomplete: ${issues.join(', ')}`)
-        }
-        const nextRuntime = await createRuntimeKernel(nextConfig)
-        await nextRuntime.kernel.start()
-        runtime = nextRuntime
-      })().finally(() => { activationPromise = null })
-    }
-    return activationPromise
-  }
-
-  const apiApp = createApiApp({
-    getCtx: () => ({
-      kernel: runtime?.kernel,
-      config: runtime?.kernel.getConfig() ?? config,
-      projects: runtime?.projects ?? [],
-      onActivate: activate,
-    }),
-  })
-
-  const app = new Hono()
-  app.route('/api', apiApp)
-  app.use('*', serveSpa(DIST_DIR))
-
-  Bun.serve({
-    port: config.dashboard.port,
-    hostname: process.env.REEVE_HOST || '0.0.0.0',
-    idleTimeout: 120,
-    fetch(req, server) {
-      if (new URL(req.url).pathname === '/api/events') {
-        server.timeout(req, 0)
+  if (config.dashboard.enabled) {
+    let activationPromise: Promise<void> | null = null
+    const activate = async (): Promise<void> => {
+      if (runtime && runtime.kernel.lastTickAt > 0) return
+      if (!activationPromise) {
+        activationPromise = (async () => {
+          const nextConfig = loadConfig()
+          const { ready, issues } = preflight()
+          if (!ready) {
+            throw new Error(`Setup incomplete: ${issues.join(', ')}`)
+          }
+          const nextRuntime = await createRuntimeKernel(nextConfig)
+          await nextRuntime.kernel.start()
+          runtime = nextRuntime
+        })().finally(() => { activationPromise = null })
       }
-      return app.fetch(req, server)
-    },
-  })
+      return activationPromise
+    }
+
+    const apiApp = createApiApp({
+      getCtx: () => ({
+        kernel: runtime?.kernel,
+        config: runtime?.kernel.getConfig() ?? config,
+        projects: runtime?.projects ?? [],
+        onActivate: activate,
+      }),
+    })
+
+    const app = new Hono()
+    app.route('/api', apiApp)
+    app.use('*', serveSpa(DIST_DIR))
+
+    Bun.serve({
+      port: config.dashboard.port,
+      hostname: process.env.REEVE_HOST || '0.0.0.0',
+      idleTimeout: 120,
+      fetch(req, server) {
+        if (new URL(req.url).pathname === '/api/events') {
+          server.timeout(req, 0)
+        }
+        return app.fetch(req, server)
+      },
+    })
+  }
 
   // If setup was already complete at fork time, start polling immediately.
   if (runtime && preflight().ready) {
