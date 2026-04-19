@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import {
   FolderGit2Icon,
+  GitBranchIcon,
   SearchIcon,
   TerminalIcon,
   Trash2Icon,
@@ -252,13 +253,6 @@ export function ProjectsPage() {
   const [deleting, setDeleting] = useState<string | null>(null) // slug being confirmed for delete
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [copied, setCopied] = useState(false)
-
-  const handleCopyPath = useCallback((path: string) => {
-    navigator.clipboard.writeText(path)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }, [])
 
   const handleDelete = useCallback(async (slug: string) => {
     setDeleteLoading(true)
@@ -416,21 +410,13 @@ export function ProjectsPage() {
                           </a>
                         </div>
 
-                        {/* Local Worktree */}
-                        <div 
-                          className="flex items-center gap-1.5 bg-muted/30 border rounded-md px-2.5 py-1.5 border-border/50 cursor-pointer hover:bg-muted/50 transition-colors group max-w-[300px]"
-                          onClick={() => handleCopyPath(selected.repo)}
-                          title="Click to copy absolute path"
-                        >
-                          {copied ? (
-                            <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
-                          ) : (
-                            <FolderGit2Icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                          )}
-                          <span className="font-mono text-xs text-muted-foreground group-hover:text-foreground transition-colors truncate ml-0.5">
-                            {copied ? "Copied to clipboard" : selected.repo.replace(/^\/Users\/[^/]+/, "~")}
-                          </span>
-                        </div>
+                        {/* Base branch */}
+                        {selected.baseBranch && (
+                          <div className="flex items-center gap-1.5 bg-muted/30 border rounded-md px-2.5 py-1.5 border-border/50" title="Base branch">
+                            <GitBranchIcon className="w-3.5 h-3.5 text-foreground/70" />
+                            <span className="font-mono text-xs text-foreground/80 ml-0.5">{selected.baseBranch}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
