@@ -16,6 +16,20 @@ import { Trash2Icon, ExternalLinkIcon } from "lucide-react"
 import { cleanTask, cleanAllDone } from "@/api"
 import type { TaskEntry, DisplayEvent } from "@/types"
 
+export function shouldShowBoardEmptyState(flags: {
+  projectCount: number
+  hasActive: boolean
+  hasQueued: boolean
+  hasPublished: boolean
+  hasCompleted: boolean
+}): boolean {
+  return flags.projectCount === 1
+    && !flags.hasActive
+    && !flags.hasQueued
+    && !flags.hasPublished
+    && !flags.hasCompleted
+}
+
 export function BoardPage() {
   const store = useReeveStore()
   const { config } = useConfig()
@@ -28,7 +42,8 @@ export function BoardPage() {
 
   const active = [...store.active]
   const queued = store.queued
-  const done = store.done
+  const published = store.published
+  const completed = store.completed
   const [cleaningAll, setCleaningAll] = useState(false)
 
   const handleClean = async (identifier: string) => {
@@ -60,7 +75,16 @@ export function BoardPage() {
 
   const hasActive = active.length > 0
   const hasQueued = queued.length > 0
-  const hasDone = done.length > 0
+  const hasPublished = published.length > 0
+  const hasCompleted = completed.length > 0
+  const projectCount = config?.projects.length ?? 0
+  const showEmptyState = shouldShowBoardEmptyState({
+    projectCount,
+    hasActive,
+    hasQueued,
+    hasPublished,
+    hasCompleted,
+  })
 
   const projects = config?.projects ?? []
   const pollSeconds = Math.max(1, Math.round((config?.polling.intervalMs ?? 60_000) / 1000))
@@ -68,12 +92,13 @@ export function BoardPage() {
   const soloProjectLabel = soloProject
     ? (soloProject.name ?? soloProject.repo.split("/").pop() ?? soloProject.slug)
     : ""
+  const showRepoName = projects.length > 1
 
   return (
     <div className="flex flex-col h-full">
       {/* ── Agent list (LinearBoard) ── */}
       <div className="flex-1 overflow-y-auto">
-        {!hasActive && !hasQueued && !hasDone && (
+        {showEmptyState && (
           <div className="py-20 text-center max-w-sm mx-auto px-6">
             <p className="text-sm text-muted-foreground/80">
               Reeve polls Linear every {pollSeconds}s for issues in <span className="font-medium">Todo</span>.
@@ -106,6 +131,29 @@ export function BoardPage() {
           />
         )}
 
+        {hasPublished && (
+          <div>
+            <div className="px-5 py-2.5 border-b border-border/30">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
+                In Review
+                <span className="ml-2 text-muted-foreground/30">{published.length}</span>
+              </span>
+            </div>
+            {published.map(entry => (
+              <div key={entry.identifier} className="flex items-center gap-3 px-5 py-3 border-b border-border/10">
+                <IdentifierBadge identifier={entry.identifier} />
+                <Badge variant="outline" className="text-[10px] shrink-0">In Review</Badge>
+                <span className="text-[13px] text-foreground/70 truncate flex-1">{entry.title}</span>
+                {showRepoName && (
+                  <span className="text-[11px] text-muted-foreground/50 shrink-0">
+                    {entry.repo.split("/").pop() ?? entry.repo}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Queued section (when no active agents, show queue standalone) */}
         {!hasActive && hasQueued && (
           <div>
@@ -126,12 +174,12 @@ export function BoardPage() {
           </div>
         )}
 
-        {hasDone && (
+        {hasCompleted && (
           <div>
             <div className="px-5 py-2.5 border-b border-border/30 flex items-center justify-between">
               <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
                 Done
-                <span className="ml-2 text-muted-foreground/30">{done.length}</span>
+                <span className="ml-2 text-muted-foreground/30">{completed.length}</span>
               </span>
               <Button
                 variant="ghost"
@@ -143,7 +191,7 @@ export function BoardPage() {
                 {cleaningAll ? "Cleaning\u2026" : "Clean All Worktrees"}
               </Button>
             </div>
-            {done.map(entry => (
+            {completed.map(entry => (
               <div key={entry.identifier} className="flex items-center gap-3 px-5 py-3 border-b border-border/10 opacity-60">
                 <IdentifierBadge identifier={entry.identifier} />
                 <Badge variant="outline" className="text-[10px] shrink-0">
