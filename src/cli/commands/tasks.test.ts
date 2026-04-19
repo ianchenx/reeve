@@ -7,7 +7,7 @@ describe("registerTaskCommands", () => {
     const cli = cac("reeve")
     registerTaskCommands(cli)
 
-    // cac stores rawName (with args) for subcommands
+    // c.name strips angle/square args; c.rawName preserves the full signature (e.g. "task show <identifier>")
     const rawNames = cli.commands.map((c) => c.rawName).sort()
     expect(rawNames).toContain("status")
     expect(rawNames).toContain("task list")

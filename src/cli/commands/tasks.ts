@@ -67,7 +67,7 @@ export function registerTaskCommands(cli: CAC): void {
 
   cli
     .command('task log [identifier]', 'Inspect session or daemon logs')
-    .option('-n <lines>', 'Limit how many lines are shown', { default: 20 })
+    .option('-n <lines>', 'Limit how many lines are shown')
     .option('-f, --follow', 'Follow the logs')
     .option('--daemon', 'Show daemon runtime log instead of per-task session log')
     .action(async (
@@ -118,7 +118,7 @@ export function registerTaskCommands(cli: CAC): void {
         return
       }
 
-      await runAction('log', { task: identifier, tail: opts.n }, { json: opts.json }, (data: unknown) => {
+      await runAction('log', { task: identifier, tail: opts.n ?? 20 }, { json: opts.json }, (data: unknown) => {
         for (const e of data as Array<Record<string, unknown>>) {
           console.log(JSON.stringify(e))
         }

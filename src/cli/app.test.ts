@@ -42,6 +42,19 @@ describe("cli parser regression", () => {
     expect(parsed.options.daemon).toBe(true)
   })
 
+  // cac parse-only (run: false) does not expand short aliases to their long form,
+  // so `-f` lands in options as `f` rather than `follow`. This test verifies that
+  // `-f` is accepted without error; the alias works correctly at runtime.
+  test("task log -f short alias is accepted without error", () => {
+    const cli = createCliApp()
+    expect(() =>
+      cli.parse(
+        [...baseArgv, "task", "log", "--daemon", "-f"],
+        { run: false },
+      )
+    ).not.toThrow()
+  })
+
   test("remove command parses slug positional", () => {
     const cli = createCliApp()
     const parsed = cli.parse(
