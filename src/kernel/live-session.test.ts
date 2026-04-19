@@ -50,6 +50,24 @@ describe("dashboard live session helpers", () => {
     expect(events).toContainEqual({ method: "session/update", params: { update: { sessionUpdate: "tool_call" } } })
   })
 
+  test("keeps implement events before newer review events", async () => {
+    const tasksDir = testTmpDir("live-session-stage-order-")
+    const implPath = join(tasksDir, "wor-83", "implement", "session.ndjson")
+    const reviewPath = join(tasksDir, "wor-83", "review", "session.ndjson")
+    mkdirSync(dirname(implPath), { recursive: true })
+    writeFileSync(implPath, '{"stage":"implement","seq":1}\n')
+
+    await Bun.sleep(20)
+
+    mkdirSync(dirname(reviewPath), { recursive: true })
+    writeFileSync(reviewPath, '{"stage":"review","seq":2}\n')
+
+    expect(readLiveSessionEvents("WOR-83", { tasksDir })).toEqual([
+      { stage: "implement", seq: 1 },
+      { stage: "review", seq: 2 },
+    ])
+  })
+
   test("returns an empty list when the identifier sanitizes to nothing", () => {
     const tasksDir = testTmpDir("live-session-invalid-")
     expect(readLiveSessionEvents("!!!", { tasksDir })).toEqual([])

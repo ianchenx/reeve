@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, readdirSync } from "fs"
+import { existsSync, lstatSync, readdirSync, statSync } from "fs"
 import { resolve } from "path"
 
 import { TASKS_DIR, isPathWithinRoot, sanitizeTaskIdentifier } from "../paths"
@@ -11,14 +11,18 @@ export function resolveLiveSessionPaths(identifier: string, tasksDir: string = T
   const root = resolve(tasksDir, sanitized)
   if (!isPathWithinRoot(tasksDir, root) || !existsSync(root)) return []
 
-  const paths: string[] = []
+  const paths: Array<{ path: string; stage: string; mtimeMs: number }> = []
   try {
     for (const entry of readdirSync(root)) {
       const dir = resolve(root, entry)
       if (!lstatSync(dir).isDirectory()) continue
       const session = resolve(dir, "session.ndjson")
       if (existsSync(session) && isPathWithinRoot(tasksDir, session)) {
-        paths.push(session)
+        paths.push({
+          path: session,
+          stage: entry,
+          mtimeMs: statSync(session).mtimeMs,
+        })
       }
     }
   } catch {
@@ -26,6 +30,14 @@ export function resolveLiveSessionPaths(identifier: string, tasksDir: string = T
   }
 
   return paths
+    .sort((left, right) => {
+      const timeDiff = left.mtimeMs - right.mtimeMs
+      if (timeDiff !== 0) return timeDiff
+      if (left.stage === "implement" && right.stage !== "implement") return -1
+      if (right.stage === "implement" && left.stage !== "implement") return 1
+      return left.path.localeCompare(right.path)
+    })
+    .map(entry => entry.path)
 }
 
 export function readLiveSessionEvents(
