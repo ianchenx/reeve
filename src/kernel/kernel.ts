@@ -475,6 +475,16 @@ export class Kernel {
     this.handles.delete(taskId);
     task.pid = undefined;
 
+    if (task.state !== 'active') {
+      this.log.event(taskId, task.identifier, 'agent_exit_ignored', {
+        exitCode: result.exitCode,
+        state: task.state,
+      });
+      this.store.set(task);
+      this.store.save();
+      return;
+    }
+
     const durationMs = task.startedAt
       ? Date.now() - new Date(task.startedAt).getTime()
       : undefined;
