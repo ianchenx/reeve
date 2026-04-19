@@ -118,4 +118,67 @@ describe("runtime health", () => {
     expect(health.githubReady).toBe(false)
     expect(health.issues).toContain("GitHub CLI not authenticated")
   })
+
+  test("treats missing gh executable (ENOENT) as not installed instead of crashing", () => {
+    const execSync = ((args: string[]) => {
+      if (args[0] === "gh") {
+        const err = new Error(`ENOENT: no such file or directory, posix_spawn 'gh'`) as NodeJS.ErrnoException
+        err.code = "ENOENT"
+        throw err
+      }
+      const encoder = new TextEncoder()
+      return {
+        exitCode: 0,
+        stdout: encoder.encode(""),
+        stderr: encoder.encode(""),
+        pid: 1,
+        signal: null,
+      } as unknown as ReturnType<typeof Bun.spawnSync>
+    }) as typeof Bun.spawnSync
+
+    const health = getRuntimeHealth(
+      {
+        linearApiKey: "lin_api_test",
+        projects: [{ team: "TES", linear: "proj", repo: "ian/demo", baseBranch: "main" }],
+      },
+      { execSync },
+    )
+
+    expect(health.ghInstalled).toBe(false)
+    expect(health.ghAuthenticated).toBe(false)
+    expect(health.ghStatusDetail).toBe("Install gh first")
+    expect(health.runtimeReady).toBe(false)
+    expect(health.issues).toContain("GitHub CLI not installed")
+  })
+
+  test("treats missing git executable (ENOENT) as not configured instead of crashing", () => {
+    const execSync = ((args: string[]) => {
+      if (args[0] === "git") {
+        const err = new Error(`ENOENT: no such file or directory, posix_spawn 'git'`) as NodeJS.ErrnoException
+        err.code = "ENOENT"
+        throw err
+      }
+      const encoder = new TextEncoder()
+      return {
+        exitCode: 0,
+        stdout: encoder.encode("gh version 2.0.0"),
+        stderr: encoder.encode(""),
+        pid: 1,
+        signal: null,
+      } as unknown as ReturnType<typeof Bun.spawnSync>
+    }) as typeof Bun.spawnSync
+
+    const health = getRuntimeHealth(
+      {
+        linearApiKey: "lin_api_test",
+        projects: [{ team: "TES", linear: "proj", repo: "ian/demo", baseBranch: "main" }],
+      },
+      { execSync },
+    )
+
+    expect(health.gitConfigured).toBe(false)
+    expect(health.gitHubReachable).toBe(false)
+    expect(health.runtimeReady).toBe(false)
+    expect(health.issues).toContain("Git identity not configured")
+  })
 })

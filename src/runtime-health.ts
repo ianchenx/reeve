@@ -5,10 +5,32 @@ type RuntimeHealthOptions = {
 }
 
 const decoder = new TextDecoder()
+const EMPTY_OUTPUT = new Uint8Array(0)
 
 function readOutput(output: ArrayBufferLike | ArrayBufferView | null | undefined): string {
   if (!output) return ""
   return decoder.decode(output).trim()
+}
+
+function safeSpawn(
+  execSync: typeof Bun.spawnSync,
+  args: Parameters<typeof Bun.spawnSync>[0],
+  options?: Parameters<typeof Bun.spawnSync>[1],
+): ReturnType<typeof Bun.spawnSync> {
+  try {
+    return execSync(args, options)
+  } catch {
+    return {
+      exitCode: 127,
+      stdout: EMPTY_OUTPUT,
+      stderr: EMPTY_OUTPUT,
+      pid: 0,
+      signal: null,
+      success: false,
+      signalCode: null,
+      resourceUsage: undefined,
+    } as unknown as ReturnType<typeof Bun.spawnSync>
+  }
 }
 
 export const AGENT_CLIS = ["claude", "codex"] as const
@@ -48,7 +70,7 @@ export interface SetupEntryHealth {
 function probeAgents(execSync: typeof Bun.spawnSync): AgentHealth[] {
   return AGENT_CLIS.map(name => ({
     name,
-    installed: execSync(["which", name], { stdout: "pipe", stderr: "pipe" }).exitCode === 0,
+    installed: safeSpawn(execSync, ["which", name], { stdout: "pipe", stderr: "pipe" }).exitCode === 0,
   }))
 }
 
@@ -65,7 +87,7 @@ function probeGitHubHealth(execSync: typeof Bun.spawnSync): Pick<
   | "gitHubReachableDetail"
   | "githubReady"
 > {
-  const ghVersion = execSync(["gh", "--version"], { stdout: "pipe", stderr: "pipe" })
+  const ghVersion = safeSpawn(execSync, ["gh", "--version"], { stdout: "pipe", stderr: "pipe" })
   const ghInstalled = ghVersion.exitCode === 0
 
   let ghAuthenticated = false
@@ -73,13 +95,13 @@ function probeGitHubHealth(execSync: typeof Bun.spawnSync): Pick<
   let ghStatusDetail = ghInstalled ? "Run gh auth login" : "Install gh first"
 
   if (ghInstalled) {
-    const ghAuth = execSync(["gh", "auth", "status", "--hostname", "github.com"], {
+    const ghAuth = safeSpawn(execSync, ["gh", "auth", "status", "--hostname", "github.com"], {
       stdout: "pipe",
       stderr: "pipe",
     })
     if (ghAuth.exitCode === 0) {
       ghAuthenticated = true
-      const ghUser = execSync(["gh", "api", "user", "--jq", ".login"], {
+      const ghUser = safeSpawn(execSync, ["gh", "api", "user", "--jq", ".login"], {
         stdout: "pipe",
         stderr: "pipe",
       })
@@ -90,13 +112,13 @@ function probeGitHubHealth(execSync: typeof Bun.spawnSync): Pick<
     }
   }
 
-  const gitName = execSync(["git", "config", "user.name"], { stdout: "pipe", stderr: "pipe" })
-  const gitEmail = execSync(["git", "config", "user.email"], { stdout: "pipe", stderr: "pipe" })
+  const gitName = safeSpawn(execSync, ["git", "config", "user.name"], { stdout: "pipe", stderr: "pipe" })
+  const gitEmail = safeSpawn(execSync, ["git", "config", "user.email"], { stdout: "pipe", stderr: "pipe" })
   const gitUserName = readOutput(gitName.stdout)
   const gitUserEmail = readOutput(gitEmail.stdout)
   const gitConfigured = !!(gitUserName && gitUserEmail)
 
-  const gitProbe = execSync(["git", "ls-remote", "https://github.com/github/gitignore.git", "HEAD"], {
+  const gitProbe = safeSpawn(execSync, ["git", "ls-remote", "https://github.com/github/gitignore.git", "HEAD"], {
     stdout: "pipe",
     stderr: "pipe",
   })
