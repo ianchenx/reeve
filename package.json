@@ -1,6 +1,6 @@
 {
   "name": "reeve-ai",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "type": "module",
   "description": "Self-hosted coding agent daemon that turns Linear tickets into pull requests using isolated AI agents",
   "main": "./src/index.ts",
