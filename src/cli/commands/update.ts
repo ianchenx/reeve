@@ -10,6 +10,7 @@ import { REEVE_DIR } from '../../paths'
 import { readPid } from '../../daemon-pid'
 import { hasNewerVersion } from '../../update-check'
 import type { Task } from '../../kernel/types'
+import { detectInstallSource, upgradeCommandFor, type InstallSource } from '../../install-source'
 
 const REEVE_ROOT = resolve(dirname(new URL(import.meta.url).pathname), '../../..')
 
@@ -75,11 +76,13 @@ function readActiveTasks(): Task[] {
   return store.all().filter((t) => t.state === 'active')
 }
 
-async function runBunUpgrade(): Promise<number> {
-  const proc = Bun.spawn(['bun', 'add', '-g', 'reeve-ai@latest'], {
-    stdout: 'inherit',
-    stderr: 'inherit',
-  })
+async function runUpgrade(source: InstallSource): Promise<number> {
+  const cmd = upgradeCommandFor(source)
+  if (!cmd) {
+    console.error(pc.red('error: running from a dev checkout — upgrade with `git pull`'))
+    return 1
+  }
+  const proc = Bun.spawn(cmd, { stdout: 'inherit', stderr: 'inherit' })
   await proc.exited
   return proc.exitCode ?? 1
 }
@@ -101,10 +104,16 @@ async function runStart(): Promise<number> {
 async function cmdUpdate(opts: { check: boolean }): Promise<void> {
   const current = readCurrentVersion()
   const latest = await fetchLatestVersion()
+  const source = detectInstallSource()
 
   if (!latest) {
     console.error(pc.red('error: could not reach npm registry'))
-    console.error(pc.dim('       check network, or try: bun add -g reeve-ai@latest'))
+    const cmd = upgradeCommandFor(source)
+    if (cmd) {
+      console.error(pc.dim(`       check network, or run manually: ${cmd.join(' ')}`))
+    } else {
+      console.error(pc.dim('       running from dev checkout — use git pull'))
+    }
     process.exit(1)
   }
 
@@ -139,8 +148,10 @@ async function cmdUpdate(opts: { check: boolean }): Promise<void> {
       console.log(`   ${pc.dim('\u2022')} ${pc.bold(label)}`)
     }
     console.log()
+    const cmd = upgradeCommandFor(source)
+    const cmdStr = cmd ? cmd.join(' ') : 'git pull'
     console.log(pc.dim('   Safest: wait for tasks to finish, then run:'))
-    console.log(`      ${pc.bold('reeve stop && reeve update && reeve start')}`)
+    console.log(`      ${pc.bold(`reeve stop && ${cmdStr} && reeve start`)}`)
     console.log()
     const proceed = await p.confirm({
       message: 'Upgrade binary now? (daemon keeps running the old version until you restart it manually)',
@@ -150,9 +161,9 @@ async function cmdUpdate(opts: { check: boolean }): Promise<void> {
       console.log(pc.dim('Cancelled.'))
       return
     }
-    const code = await runBunUpgrade()
+    const code = await runUpgrade(source)
     if (code !== 0) {
-      console.error(pc.red(`\n\u274c bun add failed (exit ${code})`))
+      console.error(pc.red(`\n\u274c upgrade failed (exit ${code})`))
       process.exit(code)
     }
     console.log(`\n${pc.green('\u2705')} Updated to v${latest}`)
@@ -164,16 +175,18 @@ async function cmdUpdate(opts: { check: boolean }): Promise<void> {
     return
   }
 
+  const cmd = upgradeCommandFor(source)
+  const cmdStr = cmd ? cmd.join(' ') : 'git pull'
   console.log(`${pc.bold('reeve')} v${current} ${pc.dim('\u2192')} v${latest}`)
-  console.log(pc.dim('Upgrading via bun add -g reeve-ai@latest...\n'))
+  console.log(pc.dim(`Upgrading via ${cmdStr}...\n`))
 
   if (plan.kind === 'idle-daemon') {
     console.log(pc.dim('   daemon is running with no active tasks \u2014 will restart after upgrade'))
   }
 
-  const code = await runBunUpgrade()
+  const code = await runUpgrade(source)
   if (code !== 0) {
-    console.error(pc.red(`\n\u274c bun add failed (exit ${code})`))
+    console.error(pc.red(`\n\u274c upgrade failed (exit ${code})`))
     process.exit(code)
   }
 
