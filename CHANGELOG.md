@@ -6,6 +6,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.0.10] - 2026-04-19
+
 ### Added
 - `reeve init` classifies Linear API failures (network, auth 401/403, rate-limit, server, graphql) and prints a targeted hint instead of a raw error string. 401s point to `https://linear.app/settings/account/security`; offline failures nudge to reconnect; rate-limit hits suggest waiting
 
