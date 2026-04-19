@@ -29,6 +29,18 @@ jobs:
               bash /tmp/install.sh
               export PATH="$HOME/.bun/bin:$PATH"
               reeve --version
+
+              # Regression guard: doctor must not crash on machines without gh.
+              # Exits non-zero because setup is incomplete, but must emit JSON.
+              reeve doctor --json > /tmp/doctor.json || true
+              grep -q "\"checks\"" /tmp/doctor.json || { echo "reeve doctor crashed"; cat /tmp/doctor.json; exit 1; }
+
+              # Cold-start smoke: daemon must boot and serve dashboard without config or gh.
+              reeve start
+              sleep 3
+              curl -sf http://127.0.0.1:14500/ > /dev/null
+              curl -sf http://127.0.0.1:14500/api/setup/check > /dev/null
+              reeve stop
             '
 
   alpine:
@@ -46,4 +58,15 @@ jobs:
               bash /tmp/install.sh
               export PATH="$HOME/.bun/bin:$PATH"
               reeve --version
+
+              # Regression guard: doctor must not crash on machines without gh.
+              reeve doctor --json > /tmp/doctor.json || true
+              grep -q "\"checks\"" /tmp/doctor.json || { echo "reeve doctor crashed"; cat /tmp/doctor.json; exit 1; }
+
+              # Cold-start smoke: daemon must boot and serve dashboard without config or gh.
+              reeve start
+              sleep 3
+              curl -sf http://127.0.0.1:14500/ > /dev/null
+              curl -sf http://127.0.0.1:14500/api/setup/check > /dev/null
+              reeve stop
             '
