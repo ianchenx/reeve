@@ -2,6 +2,12 @@ import { describe, expect, test } from "bun:test"
 
 import { getRuntimeHealth, getSetupEntryHealth } from "./runtime-health"
 
+function makeEnoent(bin: string): NodeJS.ErrnoException {
+  const err = new Error(`ENOENT: no such file or directory, posix_spawn '${bin}'`) as NodeJS.ErrnoException
+  err.code = "ENOENT"
+  return err
+}
+
 function createExecStub(entries: Record<string, { exitCode: number; stdout?: string; stderr?: string }>): typeof Bun.spawnSync {
   const encoder = new TextEncoder()
   return ((args: string[]) => {
@@ -121,11 +127,7 @@ describe("runtime health", () => {
 
   test("treats missing gh executable (ENOENT) as not installed instead of crashing", () => {
     const execSync = ((args: string[]) => {
-      if (args[0] === "gh") {
-        const err = new Error(`ENOENT: no such file or directory, posix_spawn 'gh'`) as NodeJS.ErrnoException
-        err.code = "ENOENT"
-        throw err
-      }
+      if (args[0] === "gh") throw makeEnoent("gh")
       const encoder = new TextEncoder()
       return {
         exitCode: 0,
@@ -153,11 +155,7 @@ describe("runtime health", () => {
 
   test("treats missing git executable (ENOENT) as not configured instead of crashing", () => {
     const execSync = ((args: string[]) => {
-      if (args[0] === "git") {
-        const err = new Error(`ENOENT: no such file or directory, posix_spawn 'git'`) as NodeJS.ErrnoException
-        err.code = "ENOENT"
-        throw err
-      }
+      if (args[0] === "git") throw makeEnoent("git")
       const encoder = new TextEncoder()
       return {
         exitCode: 0,
@@ -180,5 +178,49 @@ describe("runtime health", () => {
     expect(health.gitHubReachable).toBe(false)
     expect(health.runtimeReady).toBe(false)
     expect(health.issues).toContain("Git identity not configured")
+  })
+
+  test("treats missing which executable (ENOENT) as no agents installed", () => {
+    const execSync = ((args: string[]) => {
+      if (args[0] === "which") throw makeEnoent("which")
+      const encoder = new TextEncoder()
+      return {
+        exitCode: 0,
+        stdout: encoder.encode(""),
+        stderr: encoder.encode(""),
+        pid: 1,
+        signal: null,
+      } as unknown as ReturnType<typeof Bun.spawnSync>
+    }) as typeof Bun.spawnSync
+
+    const health = getSetupEntryHealth(
+      {
+        linearApiKey: "lin_api_test",
+        projects: [{ team: "TES", linear: "proj", repo: "ian/demo", baseBranch: "main" }],
+      },
+      { execSync },
+    )
+
+    expect(health.agents.every(a => !a.installed)).toBe(true)
+    expect(health.configured).toBe(false)
+    expect(health.issues.some(i => i.startsWith("No coding agent installed"))).toBe(true)
+  })
+
+  test("re-throws non-ENOENT errors instead of silently swallowing them", () => {
+    const execSync = (() => {
+      const err = new Error("EACCES: permission denied") as NodeJS.ErrnoException
+      err.code = "EACCES"
+      throw err
+    }) as typeof Bun.spawnSync
+
+    expect(() =>
+      getRuntimeHealth(
+        {
+          linearApiKey: "lin_api_test",
+          projects: [{ team: "TES", linear: "proj", repo: "ian/demo", baseBranch: "main" }],
+        },
+        { execSync },
+      ),
+    ).toThrow(/EACCES/)
   })
 })

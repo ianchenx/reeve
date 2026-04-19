@@ -19,7 +19,8 @@ function safeSpawn(
 ): ReturnType<typeof Bun.spawnSync> {
   try {
     return execSync(args, options)
-  } catch {
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err
     return {
       exitCode: 127,
       stdout: EMPTY_OUTPUT,
