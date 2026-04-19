@@ -6,6 +6,7 @@ import { loadSettings } from '../../config'
 import { getRuntimeHealth } from '../../runtime-health'
 import { executeAction } from '../../actions/registry'
 import type { ActionContext } from '../../actions/types'
+import { ghInstallHint } from '../../utils/platform-hints'
 import { trySpawnSync } from '../../utils/spawn'
 
 type DoctorRow = { ok: boolean; label: string; detail: string; fix?: string[] }
@@ -52,7 +53,7 @@ export function registerSystemCommands(cli: CAC): void {
           label: 'GitHub CLI (gh)',
           detail: health.ghStatusDetail,
           fix: !health.ghInstalled
-            ? ['brew install gh   (or see https://cli.github.com)']
+            ? ghInstallHint()
             : !health.ghAuthenticated
               ? ['gh auth login']
               : undefined,
