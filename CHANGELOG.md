@@ -6,6 +6,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- `reeve init` classifies Linear API failures (network, auth 401/403, rate-limit, server, graphql) and prints a targeted hint instead of a raw error string. 401s point to `https://linear.app/settings/account/security`; offline failures nudge to reconnect; rate-limit hits suggest waiting
+
+### Fixed
+- `reeve doctor` suggests the correct gh install command per platform (`brew install gh` on macOS, `sudo apt install gh` on Linux with dnf/pacman fallback, `winget install --id GitHub.cli` on Windows) instead of hardcoded `brew install gh`
+- `reeve project add <repo>` without `--team` and no configured `defaultTeam` now points users to `reeve init` for first-time setup, rather than only saying "use --team KEY"
+
 ## [0.0.9] - 2026-04-19
 
 ### Fixed
