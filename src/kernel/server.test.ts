@@ -273,7 +273,15 @@ describe("Project CRUD", () => {
 })
 
 describe("Worktree API", () => {
-  it("returns diffs for top-level and nested files", async () => {
+  it("returns modified files with intact paths and diffs", async () => {
+    const status = await api("/worktree/TES-53")
+    expect(status.status).toBe(200)
+    const statusJson = await status.json() as {
+      changedFiles: Array<{ status: string; file: string }>
+    }
+    expect(statusJson.changedFiles).toContainEqual({ status: "M", file: "package.json" })
+    expect(statusJson.changedFiles).toContainEqual({ status: "M", file: "scripts/weather.ts" })
+
     const pkg = await api("/worktree/TES-53/diff/package.json")
     expect(pkg.status).toBe(200)
     const pkgJson = await pkg.json() as { diff: string }
@@ -283,6 +291,22 @@ describe("Worktree API", () => {
     expect(nested.status).toBe(200)
     const nestedJson = await nested.json() as { diff: string }
     expect(nestedJson.diff).toContain("rainy")
+  })
+
+  it("returns a diff for untracked files listed in worktree status", async () => {
+    writeFileSync(resolve(WORKTREE_DIR, "scripts", "new-file.ts"), "export const added = true\n")
+
+    const status = await api("/worktree/TES-53")
+    expect(status.status).toBe(200)
+    const statusJson = await status.json() as {
+      changedFiles: Array<{ status: string; file: string }>
+    }
+    expect(statusJson.changedFiles).toContainEqual({ status: "??", file: "scripts/new-file.ts" })
+
+    const diff = await api("/worktree/TES-53/diff/scripts%2Fnew-file.ts")
+    expect(diff.status).toBe(200)
+    const diffJson = await diff.json() as { diff: string }
+    expect(diffJson.diff).toContain("export const added = true")
   })
 })
 

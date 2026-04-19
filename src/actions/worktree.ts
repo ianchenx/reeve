@@ -36,7 +36,7 @@ registerAction({
     ])
     await Promise.all([statusProc.exited, logProc.exited, diffStatProc.exited, branchProc.exited])
 
-    const changedFiles = statusOut.trim().split("\n").filter(Boolean).map(line => ({
+    const changedFiles = statusOut.split("\n").filter(Boolean).map(line => ({
       status: line.slice(0, 2).trim(),
       file: line.slice(3),
     }))
@@ -71,9 +71,19 @@ registerAction({
     const dir = task?.worktree
     if (!dir || !existsSync(dir)) throw new Error("worktree not found")
 
-    const proc = Bun.spawn(["git", "diff", "HEAD", "--", input.file], { cwd: dir, stdout: "pipe", stderr: "pipe" })
+    const statusProc = Bun.spawn(["git", "status", "--porcelain", "--untracked-files=all", "--", input.file], {
+      cwd: dir,
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+    const status = await new Response(statusProc.stdout).text()
+    await statusProc.exited
+
+    const proc = status.startsWith("?? ")
+      ? Bun.spawn(["git", "diff", "--no-index", "--", "/dev/null", input.file], { cwd: dir, stdout: "pipe", stderr: "pipe" })
+      : Bun.spawn(["git", "diff", "HEAD", "--", input.file], { cwd: dir, stdout: "pipe", stderr: "pipe" })
     const diff = await new Response(proc.stdout).text()
     await proc.exited
-    return { diff: diff.trim() }
+    return { diff: diff.trimEnd() }
   },
 })
