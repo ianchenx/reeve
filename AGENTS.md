@@ -177,13 +177,11 @@ Secrets go in `settings.json` (never committed).
 
 - **`gh pr view` failure is silent.** `detectPrUrl` returns `undefined` on failure. The kernel proceeds normally.
 
-- **`project.setup` exit code is not checked.** `kernel.ts` awaits `proc.exited` but discards the return value. Setup failures are silent — the agent spawns regardless.
+- **`project.setup` failure is non-fatal by design.** `kernel.ts` checks `exitCode`, logs `project_setup_failed` (with a stderr tail) and continues — the agent spawns regardless. If setup *must* block dispatch, handle it inside the script (`exit 0` on soft failures) or encode the precondition in the agent prompt.
 
 - **repo basename is an implicit protocol.** `basename(repoDir)` is used across workspace manager, post-agent runner, and context-injector to name worktree dirs and symlinks. All three layers must agree — no explicit contract enforces this.
 
 - **Prompt branch name vs git branch can diverge.** Prompt uses `toLowerCase()` only; actual git branch uses `sanitizeTaskIdentifier()` which also replaces non-alphanumeric chars with `-`. Standard Linear identifiers (e.g. `WOR-42`) are unaffected, but non-standard identifiers will mismatch.
-
-- **`findProject()` suffix matching is ambiguous.** The second condition `repo.endsWith(p.repo)` lacks a `/` guard — `"special-api"` matches config entry `"api"`.
 
 - **Agents can't control their exit code.** Neither Claude Code nor Codex CLI allows the agent to exit non-zero on demand. Post-agent verdict is communicated via `verdict.txt` (written by the agent, read by `runner.ts`). Never rely on exit code alone for pass/fail semantics.
 
