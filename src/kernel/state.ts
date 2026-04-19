@@ -18,6 +18,7 @@ const tokenUsageSchema = z.object({
   cacheRead: z.number().optional(),
   contextUsed: z.number().optional(),
   contextSize: z.number().optional(),
+  costUsd: z.number().optional(),
 }) satisfies z.ZodType<TokenUsageSnapshot>
 
 const taskTraceSchema = z.object({

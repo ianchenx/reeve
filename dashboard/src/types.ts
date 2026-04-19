@@ -49,6 +49,7 @@ export interface TokenUsage {
   cacheRead?: number
   contextUsed?: number
   contextSize?: number
+  costUsd?: number
 }
 
 export interface HistoryMeta {
@@ -70,7 +71,6 @@ export interface HistoryMeta {
   outcome?: "completed" | "failed"
   prUrl?: string
   tokensUsed?: TokenUsage | number | null
-  cost?: number
   stderr?: string
   hasReview?: boolean
   failureReason?: string

@@ -211,7 +211,6 @@ export function parseClaudeLine(raw: unknown): ACPEvent[] {
         type: 'usage',
         tokensUsed: usage.total,
         usage,
-        cost: usage.costUsd,
         rawMethod: 'result.usage',
       },
     ];

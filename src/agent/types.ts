@@ -53,7 +53,6 @@ export interface ACPEvent {
   toolInput?: Record<string, unknown>;
   tokensUsed?: number;
   usage?: TokenUsageSnapshot;
-  cost?: number;
   rawMethod?: string;
 }
 

@@ -162,6 +162,20 @@ describe("StateStore", () => {
     })
   })
 
+  it("preserves costUsd on usage across save/load", () => {
+    const t = makeTask({
+      id: "cost-1",
+      identifier: "WOR-60",
+      usage: { input: 10, output: 20, total: 30, costUsd: 0.1234 },
+    })
+    store.set(t)
+    store.save()
+
+    const reloaded = new StateStore(join(dir, "state.json"))
+    expect(reloaded.load()).toBe(1)
+    expect(reloaded.get("cost-1")?.usage?.costUsd).toBe(0.1234)
+  })
+
   it("rejects undeclared task fields from disk", () => {
     Bun.write(join(dir, "state.json"), JSON.stringify({
       version: 1,

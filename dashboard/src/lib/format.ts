@@ -15,6 +15,13 @@ export function getTokenTotal(tokensUsed: HistoryEntry["tokensUsed"]): number | 
   return total > 0 ? total : null
 }
 
+export function getCostUsd(tokensUsed: HistoryEntry["tokensUsed"]): number | null {
+  if (!tokensUsed || typeof tokensUsed === "number") return null
+  return typeof tokensUsed.costUsd === "number" && Number.isFinite(tokensUsed.costUsd)
+    ? tokensUsed.costUsd
+    : null
+}
+
 export function getEffectiveInputTokens(tokensUsed: HistoryEntry["tokensUsed"]): number | null {
   if (!tokensUsed || typeof tokensUsed === "number") return null
   if (typeof tokensUsed.input !== "number") return null

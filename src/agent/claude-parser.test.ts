@@ -165,7 +165,6 @@ describe('parseClaudeLine', () => {
     expect(events).toHaveLength(1);
     expect(events[0]!.type).toBe('usage');
     expect(events[0]!.rawMethod).toBe('result.usage');
-    expect(events[0]!.cost).toBe(1.1647355);
     expect(events[0]!.usage).toEqual({
       input: 47,
       output: 11236,

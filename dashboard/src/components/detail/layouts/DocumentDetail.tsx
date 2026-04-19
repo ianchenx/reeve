@@ -18,7 +18,7 @@ import { FileChanges } from "@/components/detail/FileChanges"
 import { SessionViewer } from "@/components/detail/SessionViewer"
 import { PromptViewer, StderrViewer } from "@/components/detail/PromptViewer"
 import { formatDuration } from "@/lib/time"
-import { formatCompactTokenCount, formatTokenUsage, formatCost, getDisplayTokenBreakdown, getTokenTotal } from "@/lib/format"
+import { formatCompactTokenCount, formatTokenUsage, formatCost, getDisplayTokenBreakdown, getTokenTotal, getCostUsd } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useNavigate } from "@tanstack/react-router"
 import { useConfig } from "@/hooks/useConfig"
@@ -113,6 +113,7 @@ export function DocumentDetail({ data, onBack }: DetailLayoutProps) {
     ? [...relatedAttempts].sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime())
     : []
   const usageBreakdown = getDisplayTokenBreakdown(meta.tokensUsed)
+  const costUsd = getCostUsd(meta.tokensUsed)
 
   return (
     <div className="flex flex-col h-[calc(100dvh-3rem)] w-full max-w-full overflow-hidden">
@@ -151,8 +152,8 @@ export function DocumentDetail({ data, onBack }: DetailLayoutProps) {
           {!usageBreakdown && getTokenTotal(meta.tokensUsed) !== null && (
             <Metric icon={ActivityIcon} label="Tokens" value={<span className="font-mono tabular-nums">{formatTokenUsage(meta.tokensUsed)}</span>} />
           )}
-          {typeof meta.cost === "number" && (
-            <Metric icon={CoinsIcon} label="Cost" value={<span className="font-mono tabular-nums">{formatCost(meta.cost)}</span>} />
+          {typeof costUsd === "number" && (
+            <Metric icon={CoinsIcon} label="Cost" value={<span className="font-mono tabular-nums">{formatCost(costUsd)}</span>} />
           )}
           {meta.prUrl && (
             <Metric icon={GitPullRequestIcon} label="PR" value={<a href={meta.prUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Open</a>} />
