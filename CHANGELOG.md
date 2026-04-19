@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-04-19
+
+### Fixed
+- `reeve doctor`, `reeve start`, and `reeve run` no longer crash with ENOENT on machines without `gh` (or git) in PATH. Missing CLI tools are now reported as "not installed" instead of aborting the process
+
 ## [0.0.7] - 2026-04-19
 
 ### Added
