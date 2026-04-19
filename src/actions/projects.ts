@@ -12,7 +12,7 @@ import {
   ensureWorkflowStates,
 } from "../project-setup"
 import { loadSettings, saveSettings } from "../config"
-import { getRuntimeHealth, getSetupEntryHealth } from "../runtime-health"
+import { getRuntimeHealth, getSetupEntryHealth, hasAnyAgent } from "../runtime-health"
 import { verifyRepoExists } from "../workspace/repo-store"
 
 const REPO_REF_REGEX = /^[\w.-]+\/[\w.-]+$/
@@ -34,7 +34,7 @@ registerAction({
     const settings = loadSettings()
     const health = getSetupEntryHealth(settings)
     const runtimeActive = !!ctx.kernel && ctx.kernel.lastTickAt > 0
-    const configured = health.hasApiKey && health.codexInstalled
+    const configured = health.hasApiKey && hasAnyAgent(health.agents)
 
     return {
       configured,
@@ -58,13 +58,6 @@ registerAction({
     const settings = loadSettings()
     const projects = settings.projects ?? []
 
-    // Check which agents are available
-    const agents: string[] = []
-    for (const name of ["claude", "codex"]) {
-      const v = Bun.spawnSync(["which", name], { stdout: "pipe" })
-      if (v.exitCode === 0) agents.push(name)
-    }
-
     const health = getRuntimeHealth(settings)
     const runtimeActive = !!ctx.kernel && ctx.kernel.lastTickAt > 0
 
@@ -83,10 +76,9 @@ registerAction({
       gitUserEmail: health.gitUserEmail,
       gitHubReachable: health.gitHubReachable,
       gitHubReachableDetail: health.gitHubReachableDetail,
-      codexInstalled: health.codexInstalled,
+      agents: health.agents,
       projectCount: projects.length,
       projects: projects.map(p => ({ repo: p.repo, team: p.team, linear: p.linear })),
-      agents,
     }
   },
 })

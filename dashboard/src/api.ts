@@ -238,10 +238,9 @@ export interface SetupStatus {
   gitUserEmail: string
   gitHubReachable: boolean
   gitHubReachableDetail: string
-  codexInstalled: boolean
   projectCount: number
   projects: Array<{ repo: string; team: string; linear: string }>
-  agents: string[]
+  agents: Array<{ name: "claude" | "codex"; installed: boolean }>
 }
 
 export async function fetchSetupStatus(): Promise<SetupStatus> {

@@ -35,6 +35,11 @@ interface SetupWizardProps {
 
 type WizardStep = "loading" | "connect" | "project"
 
+const AGENT_LABELS: Record<"claude" | "codex", string> = {
+  claude: "Claude Code CLI",
+  codex: "Codex CLI",
+}
+
 export function SetupWizard({ onComplete }: SetupWizardProps) {
   const [status, setStatus] = useState<SetupStatus | null>(null)
   const [step, setStep] = useState<WizardStep>("loading")
@@ -52,7 +57,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       onComplete()
       return
     }
-    if (!nextStatus.hasApiKey || !nextStatus.githubReady || !nextStatus.codexInstalled) {
+    const hasAgent = nextStatus.agents.some(a => a.installed)
+    if (!nextStatus.hasApiKey || !nextStatus.githubReady || !hasAgent) {
       setStep("connect")
     } else {
       setStep("project")
@@ -120,7 +126,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             number={1}
             label="Connect"
             active={step === "connect"}
-            done={!!status?.hasApiKey && !!status?.githubReady && !!status?.codexInstalled}
+            done={!!status?.hasApiKey && !!status?.githubReady && !!status?.agents.some(a => a.installed)}
           />
           <div className="h-px w-8 bg-border" />
           <StepIndicator
@@ -218,23 +224,26 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                     <CpuIcon className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <div>
-                    <h2 className="font-medium">Codex Agent</h2>
+                    <h2 className="font-medium">Coding Agents</h2>
                     <p className="text-xs text-muted-foreground">
-                      Codex powers the hosted agent experience. Install the CLI on this machine.
+                      Install at least one agent CLI on this machine.
                     </p>
                   </div>
                 </div>
 
                 <div className="rounded-lg border p-3 space-y-3 text-sm">
-                  <StatusRow
-                    ok={!!status?.codexInstalled}
-                    label="Codex CLI"
-                    value={
-                      status?.codexInstalled
-                        ? "Codex CLI is installed"
-                        : "Install the Codex CLI (codex) to enable this agent"
-                    }
-                  />
+                  {status?.agents.map(agent => (
+                    <StatusRow
+                      key={agent.name}
+                      ok={agent.installed}
+                      label={AGENT_LABELS[agent.name]}
+                      value={
+                        agent.installed
+                          ? `${AGENT_LABELS[agent.name]} is installed`
+                          : `Install ${agent.name} to enable this agent`
+                      }
+                    />
+                  ))}
                 </div>
               </div>
 
@@ -329,24 +338,27 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 </div>
               </div>
 
-              {status && (
-                <div className="rounded-lg bg-muted/30 p-3 space-y-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">Detected Agents</p>
-                  <div className="flex gap-2">
-                    {status.agents.length > 0 ? (
-                      status.agents.map(a => (
-                        <Badge key={a} variant="secondary" className="text-[10px]">
-                          {a}
-                        </Badge>
-                      ))
-                    ) : (
-                      <p className="text-[11px] text-muted-foreground">
-                        No agent CLIs found. Install at least one (claude, codex, or gemini).
-                      </p>
-                    )}
+              {status && (() => {
+                const detected = status.agents.filter(a => a.installed)
+                return (
+                  <div className="rounded-lg bg-muted/30 p-3 space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">Detected Agents</p>
+                    <div className="flex gap-2">
+                      {detected.length > 0 ? (
+                        detected.map(a => (
+                          <Badge key={a.name} variant="secondary" className="text-[10px]">
+                            {AGENT_LABELS[a.name]}
+                          </Badge>
+                        ))
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground">
+                          No agent CLIs found. Install at least one ({status.agents.map(a => a.name).join(", ")}).
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )
+              })()}
 
               <Button
                 onClick={handleSave}

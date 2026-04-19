@@ -11,6 +11,14 @@ function readOutput(output: ArrayBufferLike | ArrayBufferView | null | undefined
   return decoder.decode(output).trim()
 }
 
+export const AGENT_CLIS = ["claude", "codex"] as const
+export type AgentCli = (typeof AGENT_CLIS)[number]
+
+export interface AgentHealth {
+  name: AgentCli
+  installed: boolean
+}
+
 export interface RuntimeHealth {
   hasApiKey: boolean
   projectCount: number
@@ -24,7 +32,7 @@ export interface RuntimeHealth {
   gitHubReachable: boolean
   gitHubReachableDetail: string
   githubReady: boolean
-  codexInstalled: boolean
+  agents: AgentHealth[]
   runtimeReady: boolean
   issues: string[]
 }
@@ -32,13 +40,16 @@ export interface RuntimeHealth {
 export interface SetupEntryHealth {
   hasApiKey: boolean
   projectCount: number
-  codexInstalled: boolean
+  agents: AgentHealth[]
   configured: boolean
   issues: string[]
 }
 
-function isCodexInstalled(execSync: typeof Bun.spawnSync): boolean {
-  return execSync(["which", "codex"], { stdout: "pipe", stderr: "pipe" }).exitCode === 0
+function probeAgents(execSync: typeof Bun.spawnSync): AgentHealth[] {
+  return AGENT_CLIS.map(name => ({
+    name,
+    installed: execSync(["which", name], { stdout: "pipe", stderr: "pipe" }).exitCode === 0,
+  }))
 }
 
 function probeGitHubHealth(execSync: typeof Bun.spawnSync): Pick<
@@ -108,6 +119,10 @@ function probeGitHubHealth(execSync: typeof Bun.spawnSync): Pick<
   }
 }
 
+export function hasAnyAgent(agents: AgentHealth[]): boolean {
+  return agents.some(a => a.installed)
+}
+
 export function getSetupEntryHealth(
   settings: ReeveSettings,
   options?: RuntimeHealthOptions,
@@ -115,17 +130,17 @@ export function getSetupEntryHealth(
   const execSync = options?.execSync ?? Bun.spawnSync
   const hasApiKey = !!settings.linearApiKey
   const projectCount = (settings.projects ?? []).length
-  const codexInstalled = isCodexInstalled(execSync)
+  const agents = probeAgents(execSync)
 
   const issues: string[] = []
   if (!hasApiKey) issues.push("No Linear API key configured")
   if (projectCount === 0) issues.push("No projects configured")
-  if (!codexInstalled) issues.push("Codex CLI not installed")
+  if (!hasAnyAgent(agents)) issues.push(`No coding agent installed (need one of: ${AGENT_CLIS.join(", ")})`)
 
   return {
     hasApiKey,
     projectCount,
-    codexInstalled,
+    agents,
     configured: issues.length === 0,
     issues,
   }
@@ -149,7 +164,7 @@ export function getRuntimeHealth(
     hasApiKey: setup.hasApiKey,
     projectCount: setup.projectCount,
     ...github,
-    codexInstalled: setup.codexInstalled,
+    agents: setup.agents,
     runtimeReady: issues.length === 0,
     issues,
   }

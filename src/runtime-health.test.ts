@@ -35,9 +35,10 @@ describe("runtime health", () => {
     expect(health.issues).toEqual([])
   })
 
-  test("setup entry health fails when Codex CLI is missing", () => {
+  test("setup entry health fails when no agent CLI is installed", () => {
     const execSync = createExecStub({
       "which codex": { exitCode: 1 },
+      "which claude": { exitCode: 1 },
     })
 
     const health = getSetupEntryHealth(
@@ -49,8 +50,27 @@ describe("runtime health", () => {
     )
 
     expect(health.configured).toBe(false)
-    expect(health.codexInstalled).toBe(false)
-    expect(health.issues).toContain("Codex CLI not installed")
+    expect(health.agents.every(a => !a.installed)).toBe(true)
+    expect(health.issues.some(i => i.startsWith("No coding agent installed"))).toBe(true)
+  })
+
+  test("setup entry health passes when any one agent CLI is installed", () => {
+    const execSync = createExecStub({
+      "which codex": { exitCode: 1 },
+      "which claude": { exitCode: 0, stdout: "/usr/local/bin/claude" },
+    })
+
+    const health = getSetupEntryHealth(
+      {
+        linearApiKey: "lin_api_test",
+        projects: [{ team: "TES", linear: "proj", repo: "ian/demo", baseBranch: "main" }],
+      },
+      { execSync },
+    )
+
+    expect(health.configured).toBe(true)
+    expect(health.agents.find(a => a.name === "claude")?.installed).toBe(true)
+    expect(health.agents.find(a => a.name === "codex")?.installed).toBe(false)
   })
 
   test("is runtime-ready only when key, project, Codex, and GitHub are all healthy", () => {

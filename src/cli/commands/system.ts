@@ -78,14 +78,19 @@ export function registerSystemCommands(cli: CAC): void {
         detail: health.gitHubReachableDetail,
         fix: health.gitHubReachable ? undefined : ['Check your network / proxy'],
       },
-      {
-        ok: health.codexInstalled,
-        label: 'Codex CLI',
-        detail: health.codexInstalled ? 'installed' : 'missing',
-        fix: health.codexInstalled
-          ? undefined
-          : ['See https://github.com/openai/codex#installation'],
-      },
+      (() => {
+        const installed = health.agents.filter(a => a.installed).map(a => a.name)
+        const missing = health.agents.filter(a => !a.installed).map(a => a.name)
+        const ok = installed.length > 0
+        return {
+          ok,
+          label: 'Coding agent',
+          detail: ok
+            ? `installed: ${installed.join(', ')}${missing.length ? ` (missing: ${missing.join(', ')})` : ''}`
+            : `none installed (need one of: ${health.agents.map(a => a.name).join(', ')})`,
+          fix: ok ? undefined : ['npm i -g @anthropic-ai/claude-code   (or install codex)'],
+        }
+      })(),
       {
         ok: health.hasApiKey,
         label: 'Linear API key',

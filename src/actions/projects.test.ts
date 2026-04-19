@@ -54,12 +54,21 @@ function createCtx(): ActionContext {
   return { config, projects: [] }
 }
 
+type AgentHealthFixture = { name: "claude" | "codex"; installed: boolean }
+
 type SetupHealthFixture = {
   hasApiKey: boolean
   projectCount: number
-  codexInstalled: boolean
+  agents: AgentHealthFixture[]
   configured: boolean
   issues: string[]
+}
+
+function agentsFixture(installed: Partial<Record<"claude" | "codex", boolean>> = {}): AgentHealthFixture[] {
+  return [
+    { name: "claude", installed: installed.claude ?? false },
+    { name: "codex", installed: installed.codex ?? false },
+  ]
 }
 
 type RuntimeHealthFixture = SetupHealthFixture & {
@@ -79,7 +88,7 @@ type RuntimeHealthFixture = SetupHealthFixture & {
 let currentSetupHealth: SetupHealthFixture = {
   hasApiKey: false,
   projectCount: 0,
-  codexInstalled: false,
+  agents: agentsFixture(),
   configured: false,
   issues: [],
 }
@@ -102,6 +111,7 @@ let currentRuntimeHealth: RuntimeHealthFixture = {
 mock.module("../runtime-health", () => ({
   getSetupEntryHealth: () => currentSetupHealth,
   getRuntimeHealth: () => currentRuntimeHealth,
+  hasAnyAgent: (agents: Array<{ installed: boolean }>) => agents.some(a => a.installed),
 }))
 
 let verifyRepoExistsResult: string | null = null
@@ -131,7 +141,7 @@ describe("projects actions", () => {
     currentSetupHealth = {
       hasApiKey: false,
       projectCount: 0,
-      codexInstalled: false,
+      agents: agentsFixture(),
       configured: false,
       issues: [],
     }
@@ -248,9 +258,9 @@ describe("projects actions", () => {
     currentRuntimeHealth = {
       hasApiKey: true,
       projectCount: 1,
-      codexInstalled: false,
+      agents: agentsFixture({ claude: false, codex: false }),
       configured: false,
-      issues: ["Codex CLI not installed"],
+      issues: ["No coding agent installed (need one of: claude, codex)"],
       ghInstalled: true,
       ghAuthenticated: true,
       ghLogin: "testuser",
@@ -268,12 +278,12 @@ describe("projects actions", () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
 
-    const data = result.data as { codexInstalled: boolean; githubReady: boolean }
-    expect(data.codexInstalled).toBe(false)
+    const data = result.data as { agents: AgentHealthFixture[]; githubReady: boolean }
+    expect(data.agents.every(a => !a.installed)).toBe(true)
     expect(data.githubReady).toBe(true)
   })
 
-  test("setupCheck stays unconfigured when Codex CLI is missing", async () => {
+  test("setupCheck stays unconfigured when no agent CLI is installed", async () => {
     const homeDir = createTempHome()
     process.env.HOME = homeDir
     writeSettings(homeDir, {
@@ -284,9 +294,9 @@ describe("projects actions", () => {
     currentSetupHealth = {
       hasApiKey: true,
       projectCount: 1,
-      codexInstalled: false,
+      agents: agentsFixture(),
       configured: false,
-      issues: ["Codex CLI not installed"],
+      issues: ["No coding agent installed (need one of: claude, codex)"],
     }
 
     const result = await executeAction(createCtx(), "setupCheck", {})
@@ -310,7 +320,7 @@ describe("projects actions", () => {
     currentSetupHealth = {
       hasApiKey: true,
       projectCount: 0,
-      codexInstalled: true,
+      agents: agentsFixture({ codex: true }),
       configured: false,
       issues: ["No projects configured"],
     }
