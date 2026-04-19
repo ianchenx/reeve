@@ -115,16 +115,24 @@ export function registerSystemCommands(cli: CAC): void {
               detail: c.detail ?? (c.ok ? 'ok' : 'failed'),
             })
           }
+        } else {
+          rows.push({
+            ok: false,
+            label: '[strict] validate',
+            detail: result.error ?? 'action failed',
+          })
         }
       }
 
+      const allOk = rows.every(r => r.ok)
+
       if (opts.json) {
         const payload = {
-          ok: rows.every(r => r.ok),
+          ok: allOk,
           checks: rows.map(r => ({ label: r.label, ok: r.ok, detail: r.detail })),
         }
         process.stdout.write(JSON.stringify(payload, null, 2) + '\n')
-        process.exit(payload.ok ? 0 : 1)
+        process.exit(allOk ? 0 : 1)
       }
 
       console.log(`${pc.bold('reeve doctor')}${pc.dim(' \u2014 checking environment')}\n`)
@@ -141,7 +149,7 @@ export function registerSystemCommands(cli: CAC): void {
             pc.bold('reeve doctor'),
         )
       }
-      process.exit(issues > 0 ? 1 : 0)
+      process.exit(allOk ? 0 : 1)
     })
 
 }
