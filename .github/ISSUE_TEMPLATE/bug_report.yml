@@ -41,7 +41,7 @@ body:
     id: version
     attributes:
       label: Reeve version
-      description: Output of `reeve version`
+      description: Output of `reeve --version`
       placeholder: "0.1.0"
 
   - type: dropdown

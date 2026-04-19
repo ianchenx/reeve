@@ -49,7 +49,7 @@ Open a GitHub issue. Include:
 - What you expected vs. what happened
 - Steps to reproduce
 - Output of `reeve doctor`
-- Reeve version (`reeve version`)
+- Reeve version (`reeve --version`)
 
 ## License
 

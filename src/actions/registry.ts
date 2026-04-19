@@ -19,7 +19,7 @@ export function getAction(name: string): ActionDef | undefined {
 }
 
 /**
- * List all registered actions (for `reeve actions` and introspection).
+ * List all registered actions (for introspection).
  */
 export function listActions(): Array<{ name: string; description: string; requiresDaemon: boolean }> {
   return Array.from(registry.values())

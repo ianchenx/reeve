@@ -170,7 +170,7 @@ export class WorkspaceManager {
 
   /**
    * Remove only the git worktree for a task, preserving agent dirs (logs).
-   * Used by `reeve clean` — frees disk without losing observability.
+   * Used by `reeve task clean` — frees disk without losing observability.
    */
   async cleanWorktreeOnly(identifier: string, repoDir: string): Promise<void> {
     const sanitized = sanitizeTaskIdentifier(identifier)
