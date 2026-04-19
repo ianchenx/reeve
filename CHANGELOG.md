@@ -6,6 +6,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.0.7] - 2026-04-19
+
+### Added
+- `reeve doctor --json` — machine-readable health output for scripts and CI
+- `reeve task clean --all` — unified worktree/log cleanup (replaces the standalone `reeve clean`)
+
+### Changed
+- **CLI layout reorganized.** Task and project operations are now grouped under their own subcommands: `reeve task list|log|history|clean|retry`, `reeve project list|add|remove|update`. Old top-level forms (`reeve tasks`, `reeve log`, `reeve history`, `reeve import`, `reeve repos`) were removed — no backwards-compatible shims
+- `reeve validate` folded into `reeve doctor --strict` — one entry point for environment checks, strict failures now surface instead of being silently skipped
+- `reeve update` detects how reeve was installed (npm global vs dev checkout) and routes to the matching upgrade command instead of blindly running npm
+- Dashboard board shows the base branch instead of a (rarely useful) clickable worktree path
+- `reeve start` output trimmed to 3 lines; daemon activation now happens implicitly on first project import, removing the "Start Reeve" button from the dashboard
+
+### Removed
+- `reeve actions`, `reeve version`, `reeve rebuild-index`, `reeve review` CLI commands (internal tooling or covered by other commands)
+- Manual retry action — re-dispatch now happens via Linear state reset, matching the rest of the lifecycle model
+- Legacy `~/.config/reeve/` config and pid-file fallbacks — everything lives under `~/.reeve/` now
+
+### Fixed
+- Kernel crash on delayed agent exit: an exit event arriving for a task already transitioned to a terminal state would attempt `done → queued` and abort the daemon. Terminal states now ignore stale exits instead of re-dispatching
+- Dashboard CI cold build failed with `TS2688: Cannot find type definition file for 'bun-types'` — the type package is now declared as a dashboard devDep instead of relying on the parent workspace
+- `reeve update` no longer double-prints "upgrade failed" when run from a dev checkout — the dev-mode guard now returns before invoking the upgrader
+- Live-session events now order by mtime with first-available resolution, fixing out-of-order rendering in multi-stage flows
+- Worktree diff route matches nested paths (previously only flat file names resolved)
+- Dashboard shows diffs for untracked files, not just tracked changes
+
 ## [0.0.6] - 2026-04-18
 
 ### Added
