@@ -3,6 +3,31 @@
 import type { CAC } from 'cac'
 import { runAction, buildCtx } from '../context'
 import { executeAction } from '../../actions/registry'
+import { trySpawnSync } from '../../utils/spawn'
+
+export type DetectBranchResult =
+  | { ok: true; branch: string }
+  | { ok: false; reason: "not-installed" | "auth" | "unknown"; detail?: string }
+
+export function detectDefaultBranch(
+  repo: string,
+  execSync?: typeof Bun.spawnSync,
+): DetectBranchResult {
+  const result = trySpawnSync(
+    ["gh", "api", `repos/${repo}`, "--jq", ".default_branch"],
+    { stdout: "pipe", stderr: "pipe" },
+    execSync,
+  )
+  if (result.kind === "not-installed") return { ok: false, reason: "not-installed" }
+  if (result.kind === "error") return { ok: false, reason: "unknown", detail: result.error.message }
+  if (result.exitCode !== 0) {
+    const detail = result.stderr?.toString().trim() || result.stdout?.toString().trim() || ""
+    return { ok: false, reason: "auth", detail }
+  }
+  const branch = result.stdout?.toString().trim() ?? ""
+  if (!branch) return { ok: false, reason: "auth" }
+  return { ok: true, branch }
+}
 
 export function registerProjectCommands(cli: CAC): void {
   cli
@@ -27,15 +52,19 @@ export function registerProjectCommands(cli: CAC): void {
       if (!team) { console.error('\u274c Could not infer team. Use --team KEY'); process.exit(1) }
       const projectName = detected.repoName || repo.split('/').pop() || repo
 
-      const ghProc = Bun.spawnSync(
-        ["gh", "api", `repos/${repo}`, "--jq", ".default_branch"],
-        { stdout: "pipe", stderr: "pipe" },
-      )
-      const baseBranch = ghProc.exitCode === 0 ? ghProc.stdout.toString().trim() : ""
-      if (!baseBranch) {
-        console.error('\u274c Could not detect default branch from GitHub. Is `gh` authenticated?')
+      const detect = detectDefaultBranch(repo)
+      if (!detect.ok) {
+        if (detect.reason === "not-installed") {
+          console.error('\u274c GitHub CLI (gh) is not installed. Install: https://cli.github.com/')
+        } else if (detect.reason === "auth") {
+          console.error('\u274c Could not detect default branch from GitHub. Is `gh` authenticated? Run `gh auth login`')
+          if (detect.detail) console.error(`   ${detect.detail}`)
+        } else {
+          console.error(`\u274c Failed to run gh: ${detect.detail ?? "unknown error"}`)
+        }
         process.exit(1)
       }
+      const baseBranch = detect.branch
 
       if (detected.setup) console.log(`  Setup:    ${detected.setup}`)
       console.log(`  Branch:   ${baseBranch}`)

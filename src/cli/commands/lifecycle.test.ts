@@ -7,6 +7,7 @@ import {
   buildDaemonStartedBanner,
   buildAlreadyRunningMessage,
   bootstrapDaemonRuntime,
+  findPidByPort,
 } from "./lifecycle"
 
 describe("buildRunNotReadyMessage", () => {
@@ -282,6 +283,56 @@ describe("cmdStart", () => {
     } finally {
       restore()
     }
+  })
+})
+
+describe("findPidByPort", () => {
+  it("returns the pid when lsof prints a valid number", () => {
+    const execSync = (() => ({
+      exitCode: 0,
+      stdout: Buffer.from("1234\n"),
+      stderr: Buffer.from(""),
+      pid: 1, signal: null, success: true,
+    } as unknown as ReturnType<typeof Bun.spawnSync>)) as typeof Bun.spawnSync
+
+    const result = findPidByPort(14500, execSync)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.pid).toBe(1234)
+  })
+
+  it("returns not-installed when lsof is missing (ENOENT)", () => {
+    const execSync = (() => {
+      const err = new Error("posix_spawn 'lsof'") as NodeJS.ErrnoException
+      err.code = "ENOENT"
+      throw err
+    }) as typeof Bun.spawnSync
+
+    const result = findPidByPort(14500, execSync)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toBe("not-installed")
+  })
+
+  it("returns no-match when lsof prints nothing", () => {
+    const execSync = (() => ({
+      exitCode: 1,
+      stdout: Buffer.from(""),
+      stderr: Buffer.from(""),
+      pid: 1, signal: null, success: false,
+    } as unknown as ReturnType<typeof Bun.spawnSync>)) as typeof Bun.spawnSync
+
+    const result = findPidByPort(14500, execSync)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toBe("no-match")
+  })
+
+  it("rethrows non-ENOENT spawn failures instead of silently swallowing them", () => {
+    const execSync = (() => {
+      const err = new Error("EACCES: permission denied") as NodeJS.ErrnoException
+      err.code = "EACCES"
+      throw err
+    }) as typeof Bun.spawnSync
+
+    expect(() => findPidByPort(14500, execSync)).toThrow(/EACCES/)
   })
 })
 

@@ -13,6 +13,7 @@ import { appendFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFile
 import { basename, resolve, sep } from "path"
 import { sanitizeTaskIdentifier, TASKS_DIR } from "../paths"
 import { setupAgentContext, buildAgentRules } from "./context-injector"
+import { trySpawnSync } from "../utils/spawn"
 
 
 export interface WorkspaceInfo {
@@ -221,8 +222,6 @@ export class WorkspaceManager {
   private listManagedWorktreesIn(root: string): ManagedWorktreeInfo[] {
     if (!existsSync(root)) return []
 
-    const decoder = new TextDecoder()
-
     return readdirSync(root)
       .filter(name => {
         try {
@@ -258,11 +257,13 @@ export class WorkspaceManager {
 
         const repoGitDir = resolve(gitDir, "..", "..")
         const repoDir = resolve(repoGitDir, "..")
-        const branchProc = Bun.spawnSync(
+        const branchResult = trySpawnSync(
           ["git", "-C", worktreeDir, "branch", "--show-current"],
           { stdout: "pipe", stderr: "pipe" },
         )
-        const branch = decoder.decode(branchProc.stdout).trim()
+        const branch = branchResult.kind === "ok" && branchResult.exitCode === 0
+          ? (branchResult.stdout?.toString().trim() ?? "")
+          : ""
 
         return [{
           identifier: name,

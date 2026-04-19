@@ -9,6 +9,20 @@ import { printAnimatedBanner } from '../../kernel/banner'
 import { serveDashboard, installGracefulShutdown } from './runtime'
 import { readPid, writePid, removePid } from '../../daemon-pid'
 import { spawnPath } from '../../utils/path'
+import { trySpawnSync } from '../../utils/spawn'
+
+export type FindPidResult =
+  | { ok: true; pid: number }
+  | { ok: false; reason: "not-installed" | "no-match" }
+
+export function findPidByPort(port: number, execSync?: typeof Bun.spawnSync): FindPidResult {
+  const result = trySpawnSync(['lsof', '-ti', `:${port}`], { stdout: 'pipe', stderr: 'pipe' }, execSync)
+  if (result.kind === "not-installed") return { ok: false, reason: "not-installed" }
+  if (result.kind === "error") throw result.error
+  const pid = parseInt(result.stdout?.toString().trim() ?? "", 10)
+  if (isNaN(pid)) return { ok: false, reason: "no-match" }
+  return { ok: true, pid }
+}
 
 const REEVE_ROOT = resolve(dirname(new URL(import.meta.url).pathname), '../../..')
 
@@ -102,12 +116,12 @@ async function cmdStart(): Promise<void> {
   // Fall back to spawnPath() so daemon can still find gh/claude/codex when
   // current PATH is empty and login-shell probe fails.
   let daemonPath = spawnPath()
-  try {
-    const shell = process.env.SHELL || '/bin/zsh'
-    const result = Bun.spawnSync([shell, '-l', '-c', 'echo $PATH'], { stdout: 'pipe' })
-    const loginPath = new TextDecoder().decode(result.stdout).trim()
+  const shell = process.env.SHELL || '/bin/zsh'
+  const shellResult = trySpawnSync([shell, '-l', '-c', 'echo $PATH'], { stdout: 'pipe' })
+  if (shellResult.kind === 'ok') {
+    const loginPath = shellResult.stdout?.toString().trim() ?? ''
     if (loginPath) daemonPath = loginPath
-  } catch { /* fall back to spawnPath() */ }
+  }
 
   const appPath = resolve(dirname(cliPath), '..', 'app.ts')
   const child = Bun.spawn(['bun', 'run', appPath, 'daemon'], {
@@ -127,8 +141,8 @@ async function cmdStart(): Promise<void> {
     removePid()
     console.error(`reeve failed to start (pid ${child.pid} exited immediately)`)
     console.error(`  Check log: ${logPath}`)
-    const tail = Bun.spawnSync(['tail', '-n', '5', logPath])
-    process.stderr.write(tail.stdout)
+    const tail = trySpawnSync(['tail', '-n', '5', logPath])
+    if (tail.kind === 'ok' && tail.stdout) process.stderr.write(tail.stdout)
     process.exit(1)
   }
 
@@ -286,18 +300,22 @@ async function cmdStop(): Promise<void> {
   const pid = readPid()
 
   if (!pid) {
-    // Last resort: find by port
-    try {
-      const proc = Bun.spawnSync(['lsof', '-ti', `:${port}`], { stdout: 'pipe' })
-      const portPid = parseInt(new TextDecoder().decode(proc.stdout).trim(), 10)
-      if (!isNaN(portPid)) {
-        process.kill(portPid, 'SIGTERM')
-        console.log(`reeve stopped (pid: ${portPid}, found by port ${port})`)
-        removePid()
-        return
+    const found = findPidByPort(port)
+    if (!found.ok) {
+      if (found.reason === "not-installed") {
+        console.log(`reeve is not running (or install lsof to verify port ${port})`)
+      } else {
+        console.log('reeve is not running')
       }
-    } catch {}
-    console.log('reeve is not running')
+      return
+    }
+    try {
+      process.kill(found.pid, 'SIGTERM')
+      console.log(`reeve stopped (pid: ${found.pid}, found by port ${port})`)
+      removePid()
+    } catch {
+      console.log('reeve is not running')
+    }
     return
   }
 

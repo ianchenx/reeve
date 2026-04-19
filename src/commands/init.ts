@@ -8,6 +8,7 @@ import { dirname } from "path"
 
 import { getSettingsPath, loadSettings, type ReeveSettings } from "../config"
 import { ensureWorkflowStates, linearGQL, type TeamFixture } from "../project-setup"
+import { trySpawnSync } from "../utils/spawn"
 
 function saveSettings(settings: ReeveSettings): void {
   const settingsPath = getSettingsPath()
@@ -17,8 +18,8 @@ function saveSettings(settings: ReeveSettings): void {
 
 function detectDefaultAgent(): ReeveSettings["defaultAgent"] {
   for (const name of ["codex", "claude"] as const) {
-    const result = Bun.spawnSync(["which", name], { stdout: "pipe", stderr: "pipe" })
-    if (result.exitCode === 0) return name
+    const result = trySpawnSync(["which", name], { stdout: "pipe", stderr: "pipe" })
+    if (result.kind === "ok" && result.exitCode === 0) return name
   }
   return "codex"
 }

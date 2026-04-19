@@ -6,6 +6,7 @@ import { loadSettings } from '../../config'
 import { getRuntimeHealth } from '../../runtime-health'
 import { executeAction } from '../../actions/registry'
 import type { ActionContext } from '../../actions/types'
+import { trySpawnSync } from '../../utils/spawn'
 
 type DoctorRow = { ok: boolean; label: string; detail: string; fix?: string[] }
 
@@ -33,10 +34,10 @@ export function registerSystemCommands(cli: CAC): void {
       const settings = loadSettings()
       const health = getRuntimeHealth(settings)
 
-      const bunProc = Bun.spawnSync(['bun', '--version'], { stdout: 'pipe' })
-      const bunOk = bunProc.exitCode === 0
-      const bunVersion = bunOk
-        ? new TextDecoder().decode(bunProc.stdout).trim()
+      const bunProbe = trySpawnSync(['bun', '--version'], { stdout: 'pipe' })
+      const bunOk = bunProbe.kind === 'ok' && bunProbe.exitCode === 0
+      const bunVersion = bunOk && bunProbe.kind === 'ok'
+        ? bunProbe.stdout?.toString().trim() || 'not found'
         : 'not found'
 
       const rows: DoctorRow[] = [

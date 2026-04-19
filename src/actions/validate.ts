@@ -4,6 +4,7 @@ import { loadConfig, loadSettings } from "../config"
 import { existsSync } from "fs"
 import { resolve } from "path"
 import { REEVE_DIR } from "../paths"
+import { trySpawnSync } from "../utils/spawn"
 
 registerAction({
   name: "validate",
@@ -71,11 +72,12 @@ registerAction({
 
       // 6. Agent binaries
       for (const agent of ["claude", "codex"]) {
-        const proc = Bun.spawnSync(["which", agent], { stdout: "pipe", stderr: "pipe" })
+        const result = trySpawnSync(["which", agent], { stdout: "pipe", stderr: "pipe" })
+        const ok = result.kind === "ok" && result.exitCode === 0
         checks.push({
           name: `agent: ${agent}`,
-          ok: proc.exitCode === 0,
-          detail: proc.exitCode === 0 ? "available" : "not found in PATH",
+          ok,
+          detail: ok ? "available" : "not found in PATH",
         })
       }
     } catch (err) {

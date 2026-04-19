@@ -1,37 +1,20 @@
 import type { ReeveSettings } from "./config"
+import { trySpawnSync, type SpawnResult } from "./utils/spawn"
 
 type RuntimeHealthOptions = {
   execSync?: typeof Bun.spawnSync
 }
 
 const decoder = new TextDecoder()
-const EMPTY_OUTPUT = new Uint8Array(0)
 
 function readOutput(output: ArrayBufferLike | ArrayBufferView | null | undefined): string {
   if (!output) return ""
   return decoder.decode(output).trim()
 }
 
-function safeSpawn(
-  execSync: typeof Bun.spawnSync,
-  args: Parameters<typeof Bun.spawnSync>[0],
-  options?: Parameters<typeof Bun.spawnSync>[1],
-): ReturnType<typeof Bun.spawnSync> {
-  try {
-    return execSync(args, options)
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err
-    return {
-      exitCode: 127,
-      stdout: EMPTY_OUTPUT,
-      stderr: EMPTY_OUTPUT,
-      pid: 0,
-      signal: null,
-      success: false,
-      signalCode: null,
-      resourceUsage: undefined,
-    } as unknown as ReturnType<typeof Bun.spawnSync>
-  }
+function ranOk(result: SpawnResult): boolean {
+  if (result.kind === "error") throw result.error
+  return result.kind === "ok" && result.exitCode === 0
 }
 
 export const AGENT_CLIS = ["claude", "codex"] as const
@@ -71,7 +54,7 @@ export interface SetupEntryHealth {
 function probeAgents(execSync: typeof Bun.spawnSync): AgentHealth[] {
   return AGENT_CLIS.map(name => ({
     name,
-    installed: safeSpawn(execSync, ["which", name], { stdout: "pipe", stderr: "pipe" }).exitCode === 0,
+    installed: ranOk(trySpawnSync(["which", name], { stdout: "pipe", stderr: "pipe" }, execSync)),
   }))
 }
 
@@ -88,45 +71,52 @@ function probeGitHubHealth(execSync: typeof Bun.spawnSync): Pick<
   | "gitHubReachableDetail"
   | "githubReady"
 > {
-  const ghVersion = safeSpawn(execSync, ["gh", "--version"], { stdout: "pipe", stderr: "pipe" })
-  const ghInstalled = ghVersion.exitCode === 0
+  const ghVersion = trySpawnSync(["gh", "--version"], { stdout: "pipe", stderr: "pipe" }, execSync)
+  const ghInstalled = ranOk(ghVersion)
 
   let ghAuthenticated = false
   let ghLogin = ""
   let ghStatusDetail = ghInstalled ? "Run gh auth login" : "Install gh first"
 
   if (ghInstalled) {
-    const ghAuth = safeSpawn(execSync, ["gh", "auth", "status", "--hostname", "github.com"], {
-      stdout: "pipe",
-      stderr: "pipe",
-    })
-    if (ghAuth.exitCode === 0) {
+    const ghAuth = trySpawnSync(
+      ["gh", "auth", "status", "--hostname", "github.com"],
+      { stdout: "pipe", stderr: "pipe" },
+      execSync,
+    )
+    if (ranOk(ghAuth)) {
       ghAuthenticated = true
-      const ghUser = safeSpawn(execSync, ["gh", "api", "user", "--jq", ".login"], {
-        stdout: "pipe",
-        stderr: "pipe",
-      })
-      ghLogin = readOutput(ghUser.stdout)
+      const ghUser = trySpawnSync(
+        ["gh", "api", "user", "--jq", ".login"],
+        { stdout: "pipe", stderr: "pipe" },
+        execSync,
+      )
+      if (ghUser.kind === "ok") ghLogin = readOutput(ghUser.stdout)
       ghStatusDetail = ghLogin ? `Logged in as ${ghLogin}` : "Authenticated"
-    } else {
+    } else if (ghAuth.kind === "ok") {
       ghStatusDetail = readOutput(ghAuth.stderr) || readOutput(ghAuth.stdout) || "Run gh auth login"
     }
   }
 
-  const gitName = safeSpawn(execSync, ["git", "config", "user.name"], { stdout: "pipe", stderr: "pipe" })
-  const gitEmail = safeSpawn(execSync, ["git", "config", "user.email"], { stdout: "pipe", stderr: "pipe" })
-  const gitUserName = readOutput(gitName.stdout)
-  const gitUserEmail = readOutput(gitEmail.stdout)
+  const gitName = trySpawnSync(["git", "config", "user.name"], { stdout: "pipe", stderr: "pipe" }, execSync)
+  const gitEmail = trySpawnSync(["git", "config", "user.email"], { stdout: "pipe", stderr: "pipe" }, execSync)
+  if (gitName.kind === "error") throw gitName.error
+  if (gitEmail.kind === "error") throw gitEmail.error
+  const gitUserName = gitName.kind === "ok" ? readOutput(gitName.stdout) : ""
+  const gitUserEmail = gitEmail.kind === "ok" ? readOutput(gitEmail.stdout) : ""
   const gitConfigured = !!(gitUserName && gitUserEmail)
 
-  const gitProbe = safeSpawn(execSync, ["git", "ls-remote", "https://github.com/github/gitignore.git", "HEAD"], {
-    stdout: "pipe",
-    stderr: "pipe",
-  })
-  const gitHubReachable = gitProbe.exitCode === 0
+  const gitProbe = trySpawnSync(
+    ["git", "ls-remote", "https://github.com/github/gitignore.git", "HEAD"],
+    { stdout: "pipe", stderr: "pipe" },
+    execSync,
+  )
+  const gitHubReachable = ranOk(gitProbe)
   const gitHubReachableDetail = gitHubReachable
     ? "git can reach github.com"
-    : readOutput(gitProbe.stderr) || readOutput(gitProbe.stdout) || "git cannot reach github.com"
+    : gitProbe.kind === "ok"
+      ? readOutput(gitProbe.stderr) || readOutput(gitProbe.stdout) || "git cannot reach github.com"
+      : "git cannot reach github.com"
 
   return {
     ghInstalled,

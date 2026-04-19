@@ -1,6 +1,7 @@
 // agent/process-utils.ts — Shared process management helpers for backends.
 
 import type { RunnerLogger } from './types';
+import { trySpawnSync } from '../utils/spawn';
 
 export async function collectStderr(
   stream: ReadableStream<Uint8Array>,
@@ -25,20 +26,22 @@ export async function collectStderr(
   } catch {}
 }
 
+export function findChildPids(parentPid: number, execSync?: typeof Bun.spawnSync): number[] {
+  const result = trySpawnSync(['pgrep', '-P', String(parentPid)], undefined, execSync);
+  if (result.kind !== 'ok' || result.exitCode !== 0) return [];
+  const stdout = result.stdout?.toString().trim() ?? '';
+  if (!stdout) return [];
+  return stdout.split('\n').map(Number).filter(Boolean);
+}
+
 /**
  * Recursively kill a process and all its descendants (bottom-up).
- * Uses pgrep to find children, recurses, then kills the parent with SIGTERM.
+ * Uses pgrep to find children; if pgrep is missing, still SIGTERM the parent.
  */
 export function killProcessTree(pid: number): void {
-  try {
-    const result = Bun.spawnSync(['pgrep', '-P', String(pid)]);
-    const stdout = result.stdout.toString().trim();
-    if (stdout) {
-      for (const childPid of stdout.split('\n').map(Number).filter(Boolean)) {
-        killProcessTree(childPid);
-      }
-    }
-  } catch {}
+  for (const childPid of findChildPids(pid)) {
+    killProcessTree(childPid);
+  }
   try {
     process.kill(pid, 'SIGTERM');
   } catch {}

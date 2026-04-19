@@ -7,6 +7,7 @@ import type { Task } from '../../kernel/types'
 import { runAction } from '../context'
 import { sanitizeTaskIdentifier, taskDir, LOGS_DIR } from '../../paths'
 import { getSettingsPath } from '../../config'
+import { trySpawnSync } from '../../utils/spawn'
 
 // ── Formatters ───────────────────────────────────────────
 
@@ -88,8 +89,13 @@ export function registerTaskCommands(cli: CAC): void {
           })
           process.on('SIGINT', () => { tail.kill(); process.exit(0) })
         } else {
-          const tail = Bun.spawnSync(['tail', '-n', String(opts.n ?? 30), logPath])
-          process.stdout.write(tail.stdout)
+          const tail = trySpawnSync(['tail', '-n', String(opts.n ?? 30), logPath])
+          if (tail.kind === 'not-installed') {
+            console.error(`tail not found in PATH — cannot display ${logPath}`)
+            process.exit(1)
+          }
+          if (tail.kind === 'error') throw tail.error
+          if (tail.stdout) process.stdout.write(tail.stdout)
         }
         return
       }
