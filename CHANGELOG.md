@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.0.9] - 2026-04-19
+
+### Fixed
+- `reeve project add` no longer crashes with an ENOENT stack trace when `gh` CLI is missing. The command now shows an actionable install hint (`Install: https://cli.github.com/`) instead, matching the graceful handling added for `reeve doctor` in v0.0.8
+
 ## [0.0.8] - 2026-04-19
 
 ### Fixed
