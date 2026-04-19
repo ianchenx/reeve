@@ -220,15 +220,17 @@ reeve run                   Start in foreground (Ctrl+C to stop)
 reeve stop                  Stop daemon
 reeve restart               Stop + start
 reeve status                Task state summary
-reeve tasks                 List active tasks
-reeve log <id>              Session log for a task
-reeve cancel <id>           Cancel a running task
-reeve history               Past task results
-reeve clean [id]            Remove task state + worktree
 reeve doctor                Check environment health
-reeve import <org/repo>     Import a GitHub repo as a project
-reeve edit <slug>           Update project settings
-reeve remove <slug>         Remove a project
+reeve update                Upgrade reeve-ai to the latest version on npm
+reeve task list             List all tasks
+reeve task show <id>        Show a single task
+reeve task log [id]         Inspect session or daemon logs
+reeve task cancel <id>      Cancel a running task
+reeve task history [id]     Past task results
+reeve task clean [id]       Remove task state + worktree
+reeve project add <repo>    Add a GitHub repo to Reeve
+reeve project edit <slug>   Update project settings
+reeve project remove <slug> Remove a project
 ```
 
 ## Development

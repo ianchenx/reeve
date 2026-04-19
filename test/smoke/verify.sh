@@ -39,6 +39,7 @@ if [ "$MODE" = "full" ]; then
   PID=$!
   sleep 3
   CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:14500/api/status 2>/dev/null || echo "000")
+  PROJECTS_CODE=$(curl -s -o /tmp/reeve-projects.json -w '%{http_code}' http://localhost:14500/api/projects 2>/dev/null || echo "000")
   kill $PID 2>/dev/null || true
   wait $PID 2>/dev/null || true
 else
@@ -54,17 +55,20 @@ else
   die "daemon health check failed (HTTP $CODE)"
 fi
 
+if [ "$MODE" = "full" ]; then
+  if [ "$PROJECTS_CODE" != "200" ]; then
+    die "project listing failed (HTTP $PROJECTS_CODE)"
+  fi
+  jq -e 'type == "array"' /tmp/reeve-projects.json >/dev/null || die "project listing did not return a JSON array"
+  echo "PASS: project listing"
+fi
+
 # ── Full mode: config-dependent checks ──
 if [ "$MODE" = "full" ]; then
   echo ""
-  echo "==> Config validation"
+  echo "==> Config loading"
   [ -f /root/.reeve/settings.json ] || die "settings.json not mounted"
-  reeve validate
-  echo "PASS: config valid"
-
-  echo ""
-  echo "==> Project listing"
-  reeve repos
+  echo "PASS: settings.json mounted"
 fi
 
 echo ""

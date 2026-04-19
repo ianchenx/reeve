@@ -26,7 +26,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 ## [0.0.3] - 2026-04-18
 
 ### Changed
-- `reeve init` and `reeve import` print the full next-step chain (import → start → status) so the handoff between setup stages is explicit
+- `reeve init` and `reeve project add` print the full next-step chain (project add → start → status) so the handoff between setup stages is explicit
 - `reeve doctor` prints an inline fix command for each failing check and uses picocolors for ✅/❌ coloring with column-aligned labels
 
 ## [0.0.2] - 2026-04-17
@@ -66,9 +66,9 @@ Initial open-source release.
 - Retry with exponential backoff, continuation, and crash recovery
 - 4 bundled skills: `reeve-commit`, `reeve-push`, `reeve-pull`, `reeve-linear`
 - `reeve doctor` for environment health checks
-- `reeve import <org/repo>` for quick project onboarding
+- `reeve project add <org/repo>` for quick project onboarding
 - Update notification system — CLI and dashboard show a banner when a newer version is available
-- Token usage and cost tracking — visible in `reeve history` and task detail views
+- Token usage and cost tracking — visible in `reeve task history` and task detail views
 - Animated startup banner with ASCII logo reveal on `reeve run`
 - `/version` API endpoint for dashboard update checks
 - CI/CD pipeline with GitHub Actions (CI on PR, npm publish on tag)

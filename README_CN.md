@@ -220,15 +220,17 @@ reeve run                   前台运行（Ctrl+C 停止）
 reeve stop                  停止守护进程
 reeve restart               重启
 reeve status                任务状态概览
-reeve tasks                 列出活跃任务
-reeve log <id>              查看任务的会话日志
-reeve cancel <id>           取消运行中的任务
-reeve history               历史任务记录
-reeve clean [id]            清理任务状态 + worktree
 reeve doctor                检查环境健康状态
-reeve import <org/repo>     导入 GitHub 仓库为项目
-reeve edit <slug>           修改项目配置
-reeve remove <slug>         移除项目
+reeve update                升级到最新版 reeve-ai
+reeve task list             列出所有任务
+reeve task show <id>        查看单个任务
+reeve task log [id]         查看任务或守护进程日志
+reeve task cancel <id>      取消运行中的任务
+reeve task history [id]     历史任务记录
+reeve task clean [id]       清理任务状态 + worktree
+reeve project add <repo>    添加 GitHub 仓库到 Reeve
+reeve project edit <slug>   修改项目配置
+reeve project remove <slug> 移除项目
 ```
 
 ## 开发

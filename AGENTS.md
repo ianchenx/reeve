@@ -19,10 +19,11 @@ Reeve is an **open-source** project published on GitHub. All code, commits, and 
 | `bun run test` | Run all tests (Bun test runner) |
 | `bun test path/to/file.test.ts` | Run a single test file |
 | `npx tsc --noEmit` | Type check (**run before every commit**) |
-| `bun run src/cli/app.ts start` | Start daemon |
+| `bun run src/cli/app.ts start` | Start daemon (background) |
+| `bun run src/cli/app.ts run` | Start daemon (foreground, Ctrl+C to stop) |
 | `bun run src/cli/app.ts status` | Check active tasks |
 | `bun run src/cli/app.ts restart` | Stop + start daemon |
-| `bun run src/cli/app.ts clean` | Clean task worktrees/logs |
+| `bun run src/cli/app.ts task clean --all` | Clean task worktrees/logs |
 | `make dev-daemon` | Start backend watch |
 | `make dev-web` | Start dashboard dev server |
 

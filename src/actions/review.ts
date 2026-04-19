@@ -1,9 +1,6 @@
 // actions/review.ts — Hook-callable AI code review
 //
-// Usage:
-//   reeve review <identifier>                       # reads REEVE_* env vars
-//   reeve review <identifier> --worktree /path      # explicit worktree
-//   reeve review <identifier> --agent claude         # override agent
+// Triggered by the registered `review` action.
 //
 // In settings.json:
 //   post: { "review": "codex" }  ← in project config, enables post-agent review

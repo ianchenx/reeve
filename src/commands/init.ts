@@ -1,6 +1,6 @@
 // commands/init.ts — Global setup wizard
 // Sets up Linear API key, detects agent, ensures workflow states.
-// Project onboarding is handled by `reeve import`.
+// Project onboarding is handled by `reeve project add`.
 
 import * as p from "@clack/prompts"
 import { mkdirSync, writeFileSync } from "fs"
@@ -101,9 +101,9 @@ export async function cmdInit(): Promise<void> {
   p.outro(
     `Done — global settings saved (team: ${team.key})\n\n` +
     `  Next steps:\n` +
-    `    1. reeve import <org/repo>   Attach a GitHub repo\n` +
-    `    2. reeve start               Launch the daemon (background)\n` +
-    `    3. reeve status              Watch it run\n\n` +
+    `    1. reeve project add <org/repo>   Attach a GitHub repo\n` +
+    `    2. reeve start                    Launch the daemon (background)\n` +
+    `    3. reeve status                   Watch it run\n\n` +
     `  Run reeve doctor anytime to re-check your environment.`
   )
 }
