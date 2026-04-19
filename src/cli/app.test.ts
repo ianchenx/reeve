@@ -28,18 +28,6 @@ describe("cli parser regression", () => {
     expect(cli.matchedCommandName).toBe("import")
   })
 
-  test("review command supports agent option", () => {
-    const cli = createCliApp()
-    const parsed = cli.parse(
-      [...baseArgv, "review", "--agent", "codex"],
-      { run: false },
-    )
-
-    expect(parsed.args).toEqual([])
-    expect(parsed.options.agent).toBe("codex")
-    expect(cli.matchedCommandName).toBe("review")
-  })
-
   test("logs command accepts follow and line count", () => {
     const cli = createCliApp()
     const parsed = cli.parse(
@@ -139,17 +127,4 @@ describe("cli parser regression", () => {
     expect(cli.matchedCommandName).toBe("edit")
   })
 
-  test("review with identifier and all options", () => {
-    const cli = createCliApp()
-    const parsed = cli.parse(
-      [...baseArgv, "review", "TES-5", "--worktree", "/tmp/wt", "--pr-url", "https://github.com/x/y/pull/1", "--agent", "claude"],
-      { run: false },
-    )
-
-    expect(parsed.args).toEqual(["TES-5"])
-    expect(parsed.options.worktree).toBe("/tmp/wt")
-    expect(parsed.options.prUrl).toBe("https://github.com/x/y/pull/1")
-    expect(parsed.options.agent).toBe("claude")
-    expect(cli.matchedCommandName).toBe("review")
-  })
 })

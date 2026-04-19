@@ -1,16 +1,11 @@
-// cli/commands/system.ts — System utilities: doctor, validate, version, actions, rebuild-index
+// cli/commands/system.ts — System utilities: doctor, validate
 
 import type { CAC } from 'cac'
-import { resolve, dirname } from 'path'
-import { readFileSync } from 'fs'
 import pc from 'picocolors'
 import { loadSettings } from '../../config'
 import { getRuntimeHealth } from '../../runtime-health'
-import { rebuildHistoryIndex } from '../../history-index'
-import { executeAction, listActions } from '../../actions/registry'
+import { executeAction } from '../../actions/registry'
 import type { ActionContext } from '../../actions/types'
-
-const REEVE_ROOT = resolve(dirname(new URL(import.meta.url).pathname), '../../..')
 
 type DoctorRow = { ok: boolean; label: string; detail: string; fix?: string[] }
 
@@ -137,32 +132,4 @@ export function registerSystemCommands(cli: CAC): void {
     if (!allOk) process.exit(1)
   })
 
-  cli.command('rebuild-index', 'Rebuild the history index').action(() => {
-    const index = rebuildHistoryIndex()
-    console.log(
-      `Indexed ${index.items.length} history entr${index.items.length === 1 ? 'y' : 'ies'}`,
-    )
-  })
-
-  cli.command('actions', 'List available actions').action(async (opts: { json: boolean }) => {
-    const actions = listActions()
-    if (opts.json) {
-      process.stdout.write(JSON.stringify(actions, null, 2) + '\n')
-      return
-    }
-    console.log('Available actions:\n')
-    for (const a of actions) {
-      const badge = a.requiresDaemon ? '\ud83d\udd34 daemon' : '\ud83d\udfe2 local'
-      console.log(`  ${a.name.padEnd(20)} ${badge.padEnd(12)} ${a.description}`)
-    }
-  })
-
-  cli.command('version', 'Show version').action(() => {
-    try {
-      const pkg = JSON.parse(readFileSync(resolve(REEVE_ROOT, 'package.json'), 'utf-8'))
-      console.log(`reeve ${pkg.version}`)
-    } catch {
-      console.log('reeve (unknown version)')
-    }
-  })
 }

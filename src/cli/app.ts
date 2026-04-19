@@ -13,7 +13,6 @@ import { registerLifecycleCommands } from './commands/lifecycle'
 import { registerTaskCommands } from './commands/tasks'
 import { registerProjectCommands } from './commands/projects'
 import { registerSystemCommands } from './commands/system'
-import { registerReviewCommand } from './commands/review'
 import { registerUpdateCommand } from './commands/update'
 
 const pkgJson = JSON.parse(
@@ -30,7 +29,6 @@ export function createCliApp() {
   registerTaskCommands(cli)
   registerProjectCommands(cli)
   registerSystemCommands(cli)
-  registerReviewCommand(cli)
   registerUpdateCommand(cli)
 
   cli.help()
