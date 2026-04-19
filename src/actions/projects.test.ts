@@ -443,7 +443,7 @@ describe("projects actions", () => {
     expect(onActivate).toHaveBeenCalledTimes(1)
   })
 
-  test("projectImport returns before background activation finishes", async () => {
+  test("projectImport waits for activation before returning", async () => {
     const homeDir = createTempHome()
     process.env.HOME = homeDir
     writeSettings(homeDir, {})
@@ -473,11 +473,38 @@ describe("projects actions", () => {
 
     await Bun.sleep(25)
     expect(onActivate).toHaveBeenCalledTimes(1)
-    expect(settled).toBe(true)
+    expect(settled).toBe(false)
 
     releaseActivation()
     const result = await resultPromise
-    expect(result.ok).toBe(true)
+    expect(settled).toBe(true)
+    if (!result.ok) throw new Error(`unexpected error: ${result.error}`)
+    expect((result.data as { activationError?: string }).activationError).toBeUndefined()
+  })
+
+  test("projectImport surfaces activationError when onActivate rejects", async () => {
+    const homeDir = createTempHome()
+    process.env.HOME = homeDir
+    writeSettings(homeDir, {})
+
+    const workspaceRoot = resolve(homeDir, ".reeve", "workspaces")
+    mkdirSync(resolve(workspaceRoot, "acme", "broken-app", ".git"), { recursive: true })
+
+    const onActivate = mock(async () => { throw new Error("boom") })
+    const ctx = createCtx()
+    ctx.config.workspace.root = workspaceRoot
+    ctx.onActivate = onActivate
+
+    const result = await executeAction(ctx, "projectImport", {
+      repo: "acme/broken-app",
+      slug: "proj-broken",
+      team: "TES",
+      baseBranch: "main",
+    })
+
+    expect(onActivate).toHaveBeenCalledTimes(1)
+    if (!result.ok) throw new Error(`unexpected error: ${result.error}`)
+    expect((result.data as { activationError?: string }).activationError).toBe("boom")
   })
 
   test("projectImport does not auto-activate when kernel is already ticking", async () => {

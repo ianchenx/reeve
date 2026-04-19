@@ -233,6 +233,8 @@ export function AddProjectSheet({ open, onOpenChange, onAdded }: AddProjectSheet
         if (result.missingStates?.length) {
           const names = result.missingStates.map(m => m.name).join(", ")
           setError(`Project imported, but Linear workflow states could not be created: ${names}. Create them manually in Linear, then retry.`)
+        } else if (result.activationError) {
+          setError(`Project imported, but Reeve runtime failed to start: ${result.activationError}. Close this dialog and use the Start button to retry.`)
         } else {
           onOpenChange(false)
           reset()

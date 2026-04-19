@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
+import { Loader2Icon, PlayIcon } from "lucide-react"
 
-import { fetchSetupCheck, type SetupCheck } from "@/api"
+import { fetchSetupCheck, startRuntime, type SetupCheck } from "@/api"
 import { ConcurrencyPill } from "@/components/shared/ConcurrencyPill"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 function RuntimeBadge({ active }: { active: boolean }) {
@@ -29,32 +31,51 @@ function RuntimeBadge({ active }: { active: boolean }) {
 
 export function RuntimeControls() {
   const [status, setStatus] = useState<SetupCheck | null>(null)
+  const [starting, setStarting] = useState(false)
+
+  const load = useCallback(async (): Promise<SetupCheck | null> => {
+    try {
+      const next = await fetchSetupCheck()
+      setStatus(next)
+      return next
+    } catch {
+      // Keep the last known state; the shell can still render while the API reconnects.
+      return null
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
     let intervalId: number | null = null
 
-    const load = async () => {
-      try {
-        const next = await fetchSetupCheck()
-        if (!cancelled) {
-          setStatus(next)
-        }
-      } catch {
-        // Keep the last known state; the shell can still render while the API reconnects.
-      }
+    const poll = async () => {
+      const next = await load()
+      if (cancelled && next) setStatus(null)
     }
 
-    void load()
+    void poll()
     intervalId = window.setInterval(() => {
-      void load()
+      void poll()
     }, 5000)
 
     return () => {
       cancelled = true
       if (intervalId !== null) window.clearInterval(intervalId)
     }
-  }, [])
+  }, [load])
+
+  const handleStart = useCallback(async () => {
+    setStarting(true)
+    try {
+      await startRuntime()
+      await load()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      window.alert(`Failed to start Reeve runtime: ${message}`)
+    } finally {
+      setStarting(false)
+    }
+  }, [load])
 
   if (!status?.configured) {
     return <ConcurrencyPill />
@@ -63,6 +84,12 @@ export function RuntimeControls() {
   return (
     <div className="flex items-center gap-2">
       <RuntimeBadge active={status.runtimeActive} />
+      {!status.runtimeActive && (
+        <Button size="xs" variant="outline" onClick={handleStart} disabled={starting}>
+          {starting ? <Loader2Icon className="animate-spin" /> : <PlayIcon />}
+          Start
+        </Button>
+      )}
       <ConcurrencyPill />
     </div>
   )

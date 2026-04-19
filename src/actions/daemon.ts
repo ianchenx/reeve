@@ -173,6 +173,29 @@ registerAction({
   },
 })
 
+// ── runtimeStart (manual activation fallback) ───────────────
+// Exposed so the dashboard can recover when auto-activation failed during
+// first-run project import. The HTTP layer injects ctx.onActivate; CLI
+// callers never see this action (no onActivate provided).
+
+registerAction({
+  name: "runtimeStart",
+  description: "Start the kernel runtime (used when auto-activation failed)",
+  input: z.object({}),
+  output: z.any(),
+  requiresDaemon: false,
+  async handler(ctx: ActionContext) {
+    if (ctx.kernel && ctx.kernel.lastTickAt > 0) {
+      return { ok: true, alreadyRunning: true }
+    }
+    if (!ctx.onActivate) {
+      throw new Error("Runtime activation is not available in this mode")
+    }
+    await ctx.onActivate()
+    return { ok: true }
+  },
+})
+
 // ── cleanAllDone (batch worktree cleanup) ────────────────────
 
 registerAction({

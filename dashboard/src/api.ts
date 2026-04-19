@@ -174,6 +174,9 @@ export interface ImportResult {
   error?: string
   slug?: string
   missingStates?: Array<{ name: string; error?: string }>
+  /** Reeve auto-activates the runtime on first import. When that fails,
+   *  the error surfaces here so the UI can offer a retry. */
+  activationError?: string
 }
 
 export async function importProject(data: ImportData): Promise<ImportResult> {
@@ -219,6 +222,15 @@ export interface SetupCheck {
 
 export async function fetchSetupCheck(): Promise<SetupCheck> {
   const res = await authFetch(`${BASE}/api/setup/check`)
+  return res.json()
+}
+
+export async function startRuntime(): Promise<{ ok: boolean; alreadyRunning?: boolean }> {
+  const res = await authFetch(`${BASE}/api/runtime/start`, { method: "POST" })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { error?: string }
+    throw new Error(body.error ?? `Runtime start failed (HTTP ${res.status})`)
+  }
   return res.json()
 }
 

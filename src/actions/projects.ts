@@ -368,15 +368,21 @@ registerAction({
     }
 
     // Auto-activate the kernel if it is idle. First successful import is
-    // the implicit "start" signal — no dedicated button or endpoint.
+    // the implicit "start" signal. If activation fails we surface the error
+    // to the caller so the dashboard can show a retry affordance instead of
+    // silently leaving the daemon in an Idle state.
+    let activationError: string | undefined
     const kernelIdle = !ctx.kernel || ctx.kernel.lastTickAt === 0
     if (kernelIdle && ctx.onActivate) {
-      void ctx.onActivate().catch((err) => {
-        console.warn('[projects] auto-activation failed:', err)
-      })
+      try {
+        await ctx.onActivate()
+      } catch (err) {
+        activationError = err instanceof Error ? err.message : String(err)
+        console.warn('[projects] auto-activation failed:', activationError)
+      }
     }
 
-    return { ok: true, slug: projectSlug, missingStates }
+    return { ok: true, slug: projectSlug, missingStates, activationError }
   },
 })
 

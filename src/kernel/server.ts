@@ -100,6 +100,7 @@ export function createApiApp(deps: CreateApiAppDeps): Hono<ApiEnv> {
   app.get('/setup/check', actionRoute('setupCheck'));
   app.get('/setup/status', actionRoute('setupStatus'));
   app.post('/setup/save', actionRoute('setupSave', async (c) => c.req.json()));
+  app.post('/runtime/start', actionRoute('runtimeStart'));
   app.get('/projects', actionRoute('projectList'));
   app.get('/github/repos', actionRoute('githubRepos', (c) => ({ query: c.req.query('q') })));
   app.get('/teams/:teamKey/projects', actionRoute('teamProjects', (c) => ({ teamKey: c.req.param('teamKey') })));
