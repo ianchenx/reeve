@@ -1,4 +1,4 @@
-// cli/commands/projects.ts — Project management: import, edit, remove, repos
+// cli/commands/projects.ts — Project management: add, edit, remove
 
 import type { CAC } from 'cac'
 import { runAction, buildCtx } from '../context'
@@ -6,28 +6,7 @@ import { executeAction } from '../../actions/registry'
 
 export function registerProjectCommands(cli: CAC): void {
   cli
-    .command('repos', 'List your GitHub repos')
-    .action(async (opts: { json: boolean }) => {
-      await runAction('githubRepos', {}, { json: opts.json }, (data: unknown) => {
-        const result = data as { repos: Array<{ full_name: string; language: string | null; private: boolean }>; available: boolean }
-        if (!result.available) {
-          console.error('\u26a0\ufe0f  GitHub CLI is not ready. Install gh, run gh auth login, and verify git can reach GitHub.')
-          process.exit(1)
-        }
-        if (result.repos.length === 0) {
-          console.log('No repositories found')
-          return
-        }
-        for (const r of result.repos) {
-          const vis = r.private ? '\ud83d\udd12' : '\ud83c\udf10'
-          const lang = r.language ? ` (${r.language})` : ''
-          console.log(`  ${vis} ${r.full_name}${lang}`)
-        }
-      })
-    })
-
-  cli
-    .command('import <repo>', 'Import a repo into Reeve')
+    .command('project add <repo>', 'Add a GitHub repo to Reeve')
     .option('--team <team>', 'Team slug to assign')
     .option('--slug <slug>', 'Project slug to generate')
     .option('--agent <agent>', 'Default agent to use')
@@ -48,7 +27,6 @@ export function registerProjectCommands(cli: CAC): void {
       if (!team) { console.error('\u274c Could not infer team. Use --team KEY'); process.exit(1) }
       const projectName = detected.repoName || repo.split('/').pop() || repo
 
-      // Fetch default branch from GitHub API
       const ghProc = Bun.spawnSync(
         ["gh", "api", `repos/${repo}`, "--jq", ".default_branch"],
         { stdout: "pipe", stderr: "pipe" },
@@ -78,14 +56,14 @@ export function registerProjectCommands(cli: CAC): void {
         agent: opts.agent,
         post: opts.review ? { review: opts.review } : undefined,
       }, { json: opts.json }, () => {
-        console.log(`\n\u2705 Imported ${repo}\n`)
+        console.log(`\n\u2705 Added ${repo}\n`)
         console.log(`  Next: reeve start      Launch the daemon (background)`)
         console.log(`        reeve status     Check it's running`)
       })
     })
 
   cli
-    .command('remove <slug>', 'Remove a project')
+    .command('project remove <slug>', 'Remove a project')
     .action(async (slug: string, opts: { json: boolean }) => {
       await runAction('projectRemove', { slug }, { json: opts.json }, () => {
         console.log(`\u2705 Removed project: ${slug}`)
@@ -93,7 +71,7 @@ export function registerProjectCommands(cli: CAC): void {
     })
 
   cli
-    .command('edit <slug>', 'Edit project settings')
+    .command('project edit <slug>', 'Edit project settings')
     .option('--agent <agent>', 'Override default agent')
     .option('--setup <cmd>', 'Trigger setup workflow with the given command')
     .option('--review <agent>', 'Set review agent (claude or codex), or "off" to disable')

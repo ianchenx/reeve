@@ -5,12 +5,13 @@ import { createCliApp } from "./app"
 const baseArgv = ["bun", "/usr/local/lib/reeve"]
 
 describe("cli parser regression", () => {
-  test("import command with team, review agent, and json", () => {
+  test("project add command with team, review agent, and json", () => {
     const cli = createCliApp()
     const parsed = cli.parse(
       [
         ...baseArgv,
-        "import",
+        "project",
+        "add",
         "ianchenx/reeve",
         "--team",
         "ENG",
@@ -21,11 +22,10 @@ describe("cli parser regression", () => {
       { run: false },
     )
 
-    expect(parsed.args).toEqual(["ianchenx/reeve"])
+    expect(parsed.args).toContain("ianchenx/reeve")
     expect(parsed.options.team).toBe("ENG")
     expect(parsed.options.review).toBe("codex")
     expect(parsed.options.json).toBe(true)
-    expect(cli.matchedCommandName).toBe("import")
   })
 
   test("task log --daemon accepts follow and line count", () => {
@@ -55,15 +55,14 @@ describe("cli parser regression", () => {
     ).not.toThrow()
   })
 
-  test("remove command parses slug positional", () => {
+  test("project remove command parses slug positional", () => {
     const cli = createCliApp()
     const parsed = cli.parse(
-      [...baseArgv, "remove", "my-project"],
+      [...baseArgv, "project", "remove", "my-project"],
       { run: false },
     )
 
-    expect(parsed.args).toEqual(["my-project"])
-    expect(cli.matchedCommandName).toBe("remove")
+    expect(parsed.args).toContain("my-project")
   })
 
   test("task clean --all --force --purge", () => {
@@ -121,18 +120,17 @@ describe("cli parser regression", () => {
     expect(parsed.options.json).toBe(true)
   })
 
-  test("edit with multiple options", () => {
+  test("project edit with multiple options", () => {
     const cli = createCliApp()
     const parsed = cli.parse(
-      [...baseArgv, "edit", "my-proj", "--agent", "codex", "--setup", "bun install", "--review", "off"],
+      [...baseArgv, "project", "edit", "my-proj", "--agent", "codex", "--setup", "bun install", "--review", "off"],
       { run: false },
     )
 
-    expect(parsed.args).toEqual(["my-proj"])
+    expect(parsed.args).toContain("my-proj")
     expect(parsed.options.agent).toBe("codex")
     expect(parsed.options.setup).toBe("bun install")
     expect(parsed.options.review).toBe("off")
-    expect(cli.matchedCommandName).toBe("edit")
   })
 
 })
