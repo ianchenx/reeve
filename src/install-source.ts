@@ -14,7 +14,7 @@ export function detectInstallSourceFromPath(entryPath: string): InstallSource {
 export function detectInstallSource(): InstallSource {
   const argv1 = process.argv[1] ?? ""
   const meta = import.meta.url.replace(/^file:\/\//, "")
-  for (const path of [meta, argv1]) {
+  for (const path of [argv1, meta]) {
     const source = detectInstallSourceFromPath(path)
     if (source !== "unknown") return source
   }

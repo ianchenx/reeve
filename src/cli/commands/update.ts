@@ -141,6 +141,12 @@ async function cmdUpdate(opts: { check: boolean }): Promise<void> {
     return
   }
 
+  const upgradeCmd = upgradeCommandFor(source)
+  if (!upgradeCmd) {
+    console.error(pc.red('error: running from a dev checkout — upgrade with `git pull`'))
+    process.exit(1)
+  }
+
   if (plan.kind === 'active-daemon') {
     console.log(pc.yellow(`\u26a0\ufe0f  ${plan.active.length} active task${plan.active.length > 1 ? 's' : ''} running:`))
     for (const task of plan.active) {
