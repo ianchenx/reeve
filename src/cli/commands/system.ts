@@ -1,4 +1,4 @@
-// cli/commands/system.ts — System utilities: doctor, validate
+// cli/commands/system.ts — System utilities: doctor
 
 import type { CAC } from 'cac'
 import pc from 'picocolors'
@@ -25,111 +25,123 @@ function renderDoctor(rows: DoctorRow[]): void {
 }
 
 export function registerSystemCommands(cli: CAC): void {
-  cli.command('doctor', 'Check environment + prerequisites').action(async () => {
-    console.log(`${pc.bold('reeve doctor')}${pc.dim(' \u2014 checking environment')}\n`)
+  cli
+    .command('doctor', 'Check environment + prerequisites')
+    .option('--strict', 'Additional strict checks (repos cloned, agent binaries)')
+    .option('--json', 'Output machine-readable JSON')
+    .action(async (opts: { strict?: boolean; json?: boolean }) => {
+      const settings = loadSettings()
+      const health = getRuntimeHealth(settings)
 
-    const bunProc = Bun.spawnSync(['bun', '--version'], { stdout: 'pipe' })
-    const bunOk = bunProc.exitCode === 0
-    const bunVersion = bunOk
-      ? new TextDecoder().decode(bunProc.stdout).trim()
-      : 'not found'
+      const bunProc = Bun.spawnSync(['bun', '--version'], { stdout: 'pipe' })
+      const bunOk = bunProc.exitCode === 0
+      const bunVersion = bunOk
+        ? new TextDecoder().decode(bunProc.stdout).trim()
+        : 'not found'
 
-    const settings = loadSettings()
-    const health = getRuntimeHealth(settings)
+      const rows: DoctorRow[] = [
+        {
+          ok: bunOk,
+          label: 'Bun',
+          detail: bunVersion,
+          fix: bunOk ? undefined : ['curl -fsSL https://reeve.run/install.sh | bash'],
+        },
+        {
+          ok: health.ghInstalled && health.ghAuthenticated,
+          label: 'GitHub CLI (gh)',
+          detail: health.ghStatusDetail,
+          fix: !health.ghInstalled
+            ? ['brew install gh   (or see https://cli.github.com)']
+            : !health.ghAuthenticated
+              ? ['gh auth login']
+              : undefined,
+        },
+        {
+          ok: health.gitConfigured,
+          label: 'Git identity',
+          detail: health.gitConfigured
+            ? `${health.gitUserName} <${health.gitUserEmail}>`
+            : 'missing',
+          fix: health.gitConfigured
+            ? undefined
+            : [
+                'git config --global user.name  "Your Name"',
+                'git config --global user.email "you@example.com"',
+              ],
+        },
+        {
+          ok: health.gitHubReachable,
+          label: 'GitHub via git',
+          detail: health.gitHubReachableDetail,
+          fix: health.gitHubReachable ? undefined : ['Check your network / proxy'],
+        },
+        (() => {
+          const installed = health.agents.filter(a => a.installed).map(a => a.name)
+          const missing = health.agents.filter(a => !a.installed).map(a => a.name)
+          const ok = installed.length > 0
+          return {
+            ok,
+            label: 'Coding agent',
+            detail: ok
+              ? `installed: ${installed.join(', ')}${missing.length ? ` (missing: ${missing.join(', ')})` : ''}`
+              : `none installed (need one of: ${health.agents.map(a => a.name).join(', ')})`,
+            fix: ok ? undefined : ['npm i -g @anthropic-ai/claude-code   (or install codex)'],
+          }
+        })(),
+        {
+          ok: health.hasApiKey,
+          label: 'Linear API key',
+          detail: health.hasApiKey ? 'configured' : 'missing',
+          fix: health.hasApiKey ? undefined : ['reeve init'],
+        },
+        {
+          ok: health.projectCount > 0,
+          label: 'Projects',
+          detail: `${health.projectCount} configured`,
+          fix: health.projectCount > 0 ? undefined : ['reeve project add <org/repo>'],
+        },
+      ]
 
-    const rows: DoctorRow[] = [
-      {
-        ok: bunOk,
-        label: 'Bun',
-        detail: bunVersion,
-        fix: bunOk ? undefined : ['curl -fsSL https://reeve.run/install.sh | bash'],
-      },
-      {
-        ok: health.ghInstalled && health.ghAuthenticated,
-        label: 'GitHub CLI (gh)',
-        detail: health.ghStatusDetail,
-        fix: !health.ghInstalled
-          ? ['brew install gh   (or see https://cli.github.com)']
-          : !health.ghAuthenticated
-            ? ['gh auth login']
-            : undefined,
-      },
-      {
-        ok: health.gitConfigured,
-        label: 'Git identity',
-        detail: health.gitConfigured
-          ? `${health.gitUserName} <${health.gitUserEmail}>`
-          : 'missing',
-        fix: health.gitConfigured
-          ? undefined
-          : [
-              'git config --global user.name  "Your Name"',
-              'git config --global user.email "you@example.com"',
-            ],
-      },
-      {
-        ok: health.gitHubReachable,
-        label: 'GitHub via git',
-        detail: health.gitHubReachableDetail,
-        fix: health.gitHubReachable ? undefined : ['Check your network / proxy'],
-      },
-      (() => {
-        const installed = health.agents.filter(a => a.installed).map(a => a.name)
-        const missing = health.agents.filter(a => !a.installed).map(a => a.name)
-        const ok = installed.length > 0
-        return {
-          ok,
-          label: 'Coding agent',
-          detail: ok
-            ? `installed: ${installed.join(', ')}${missing.length ? ` (missing: ${missing.join(', ')})` : ''}`
-            : `none installed (need one of: ${health.agents.map(a => a.name).join(', ')})`,
-          fix: ok ? undefined : ['npm i -g @anthropic-ai/claude-code   (or install codex)'],
+      if (opts.strict) {
+        const result = await executeAction({} as ActionContext, 'validate', {})
+        if (result.ok) {
+          const { checks } = result.data as {
+            checks: Array<{ name: string; ok: boolean; detail?: string }>
+          }
+          for (const c of checks) {
+            rows.push({
+              ok: c.ok,
+              label: `[strict] ${c.name}`,
+              detail: c.detail ?? (c.ok ? 'ok' : 'failed'),
+            })
+          }
         }
-      })(),
-      {
-        ok: health.hasApiKey,
-        label: 'Linear API key',
-        detail: health.hasApiKey ? 'configured' : 'missing',
-        fix: health.hasApiKey ? undefined : ['reeve init'],
-      },
-      {
-        ok: health.projectCount > 0,
-        label: 'Projects',
-        detail: `${health.projectCount} configured`,
-        fix: health.projectCount > 0 ? undefined : ['reeve import <org/repo>'],
-      },
-    ]
+      }
 
-    renderDoctor(rows)
+      if (opts.json) {
+        const payload = {
+          ok: rows.every(r => r.ok),
+          checks: rows.map(r => ({ label: r.label, ok: r.ok, detail: r.detail })),
+        }
+        process.stdout.write(JSON.stringify(payload, null, 2) + '\n')
+        process.exit(payload.ok ? 0 : 1)
+      }
 
-    const issues = rows.filter((r) => !r.ok).length
-    console.log()
-    if (issues === 0) {
-      console.log(pc.green('\u2705 All checks passed'))
-    } else {
-      console.log(
-        `${pc.red(`\u274c ${issues} issue${issues > 1 ? 's' : ''} found`)}` +
-          pc.dim(' \u2014 run the commands above, then re-run ') +
-          pc.bold('reeve doctor'),
-      )
-    }
-    process.exit(issues > 0 ? 1 : 0)
-  })
+      console.log(`${pc.bold('reeve doctor')}${pc.dim(' \u2014 checking environment')}\n`)
+      renderDoctor(rows)
 
-  cli.command('validate', 'Validate configuration').action(async () => {
-    const result = await executeAction({} as ActionContext, 'validate', {})
-    if (!result.ok) {
-      console.error('Validation failed:', result.error)
-      process.exit(1)
-    }
-    const { checks } = result.data as { ok: boolean; checks: Array<{ name: string; ok: boolean; detail?: string }> }
-    for (const c of checks) {
-      const icon = c.ok ? '\u2713' : '\u2717'
-      console.log(`  ${icon} ${c.name}${c.detail ? ` \u2014 ${c.detail}` : ''}`)
-    }
-    const allOk = checks.every((c: { ok: boolean }) => c.ok)
-    console.log(allOk ? '\nAll checks passed' : '\nSome checks failed')
-    if (!allOk) process.exit(1)
-  })
+      const issues = rows.filter((r) => !r.ok).length
+      console.log()
+      if (issues === 0) {
+        console.log(pc.green('\u2705 All checks passed'))
+      } else {
+        console.log(
+          `${pc.red(`\u274c ${issues} issue${issues > 1 ? 's' : ''} found`)}` +
+            pc.dim(' \u2014 run the commands above, then re-run ') +
+            pc.bold('reeve doctor'),
+        )
+      }
+      process.exit(issues > 0 ? 1 : 0)
+    })
 
 }
