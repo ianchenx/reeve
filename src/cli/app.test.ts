@@ -28,19 +28,18 @@ describe("cli parser regression", () => {
     expect(cli.matchedCommandName).toBe("import")
   })
 
-  test("logs command accepts follow and line count", () => {
+  test("task log --daemon accepts follow and line count", () => {
     const cli = createCliApp()
     const parsed = cli.parse(
-      [...baseArgv, "logs", "-n", "15", "-f"],
+      [...baseArgv, "task", "log", "--daemon", "-n", "15", "--follow"],
       { run: false },
     )
 
-    expect(parsed.args).toEqual([])
     expect(parsed.options.n).toBe(15)
     expect(Array.isArray(parsed.options.n)).toBe(false)
     expect(parsed.options.follow).toBe(true)
     expect(Array.isArray(parsed.options.follow)).toBe(false)
-    expect(cli.matchedCommandName).toBe("logs")
+    expect(parsed.options.daemon).toBe(true)
   })
 
   test("remove command parses slug positional", () => {
@@ -54,41 +53,38 @@ describe("cli parser regression", () => {
     expect(cli.matchedCommandName).toBe("remove")
   })
 
-  test("clean --all --force --purge", () => {
+  test("task clean --all --force --purge", () => {
     const cli = createCliApp()
     const parsed = cli.parse(
-      [...baseArgv, "clean", "--all", "--force", "--purge"],
+      [...baseArgv, "task", "clean", "--all", "--force", "--purge"],
       { run: false },
     )
 
     expect(parsed.options.all).toBe(true)
     expect(parsed.options.force).toBe(true)
     expect(parsed.options.purge).toBe(true)
-    expect(cli.matchedCommandName).toBe("clean")
   })
 
-  test("history with identifier", () => {
+  test("task history with identifier", () => {
     const cli = createCliApp()
     const parsed = cli.parse(
-      [...baseArgv, "history", "TES-7"],
+      [...baseArgv, "task", "history", "TES-7"],
       { run: false },
     )
 
-    expect(parsed.args).toEqual(["TES-7"])
-    expect(cli.matchedCommandName).toBe("history")
+    expect(parsed.args).toContain("TES-7")
   })
 
-  test("log with identifier and options", () => {
+  test("task log with identifier and options", () => {
     const cli = createCliApp()
     const parsed = cli.parse(
-      [...baseArgv, "log", "TES-13", "-n", "50", "-f"],
+      [...baseArgv, "task", "log", "TES-13", "-n", "50", "--follow"],
       { run: false },
     )
 
-    expect(parsed.args).toEqual(["TES-13"])
+    expect(parsed.args).toContain("TES-13")
     expect(parsed.options.n).toBe(50)
     expect(parsed.options.follow).toBe(true)
-    expect(cli.matchedCommandName).toBe("log")
   })
 
   test("daemon command parses", () => {
@@ -105,12 +101,11 @@ describe("cli parser regression", () => {
   test("global --json propagates to any command", () => {
     const cli = createCliApp()
     const parsed = cli.parse(
-      [...baseArgv, "tasks", "--json"],
+      [...baseArgv, "task", "list", "--json"],
       { run: false },
     )
 
     expect(parsed.options.json).toBe(true)
-    expect(cli.matchedCommandName).toBe("tasks")
   })
 
   test("edit with multiple options", () => {

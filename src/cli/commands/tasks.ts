@@ -1,4 +1,4 @@
-// cli/commands/tasks.ts — Task operations: status, tasks, log, cancel, history, clean
+// cli/commands/tasks.ts — Task operations: status, task list/show/log/cancel/history/clean
 
 import type { CAC } from 'cac'
 import { resolve } from 'path'
@@ -43,7 +43,7 @@ export function registerTaskCommands(cli: CAC): void {
     })
   })
 
-  cli.command('tasks', 'List all tasks').action(async (opts: { json: boolean }) => {
+  cli.command('task list', 'List all tasks').action(async (opts: { json: boolean }) => {
     await runAction('taskList', {}, { json: opts.json }, (data: unknown) => {
       const tasks = data as Task[]
       if (tasks.length === 0) {
@@ -60,16 +60,41 @@ export function registerTaskCommands(cli: CAC): void {
   })
 
   cli
-    .command('task <identifier>', 'Show a single task')
+    .command('task show <identifier>', 'Show a single task')
     .action(async (identifier: string, opts: { json: boolean }) => {
       await runAction('taskDetail', { id: identifier }, { json: opts.json })
     })
 
   cli
-    .command('log [identifier]', 'Inspect session logs')
+    .command('task log [identifier]', 'Inspect session or daemon logs')
     .option('-n <lines>', 'Limit how many lines are shown', { default: 20 })
     .option('-f, --follow', 'Follow the logs')
-    .action(async (identifier: string | undefined, opts: { n: number; follow: boolean; json: boolean }) => {
+    .option('--daemon', 'Show daemon runtime log instead of per-task session log')
+    .action(async (
+      identifier: string | undefined,
+      opts: { n: number; follow: boolean; daemon: boolean; json: boolean },
+    ) => {
+      // Daemon runtime log branch (replaces former `logs` command)
+      if (opts.daemon) {
+        const logPath = resolve(getSettingsPath(), '..', 'logs', 'daemon.log')
+        if (!existsSync(logPath)) {
+          console.error('No daemon log found. Start with: reeve start')
+          process.exit(1)
+        }
+        if (opts.follow) {
+          const tail = Bun.spawn(['tail', '-f', '-n', String(opts.n ?? 30), logPath], {
+            stdout: 'inherit',
+            stderr: 'inherit',
+          })
+          process.on('SIGINT', () => { tail.kill(); process.exit(0) })
+        } else {
+          const tail = Bun.spawnSync(['tail', '-n', String(opts.n ?? 30), logPath])
+          process.stdout.write(tail.stdout)
+        }
+        return
+      }
+
+      // Task session log branch (replaces former `log` command)
       if (opts.follow) {
         const logFile = resolve(LOGS_DIR, 'session.jsonl')
         const tailArgs = ['tail', '-f', logFile]
@@ -101,30 +126,7 @@ export function registerTaskCommands(cli: CAC): void {
     })
 
   cli
-    .command('logs', 'Stream daemon runtime log')
-    .option('-n <lines>', 'Limit how many lines are shown', { default: 30 })
-    .option('-f, --follow', 'Follow the logs')
-    .action(async (opts: { n: number; follow: boolean }) => {
-      const logPath = resolve(getSettingsPath(), '..', 'logs', 'daemon.log')
-      if (!existsSync(logPath)) {
-        console.error('No daemon log found. Start with: reeve start')
-        process.exit(1)
-      }
-
-      if (opts.follow) {
-        const tail = Bun.spawn(['tail', '-f', '-n', String(opts.n), logPath], {
-          stdout: 'inherit',
-          stderr: 'inherit',
-        })
-        process.on('SIGINT', () => { tail.kill(); process.exit(0) })
-      } else {
-        const tail = Bun.spawnSync(['tail', '-n', String(opts.n), logPath])
-        process.stdout.write(tail.stdout)
-      }
-    })
-
-  cli
-    .command('cancel <identifier>', 'Cancel a running task')
+    .command('task cancel <identifier>', 'Cancel a running task')
     .action(async (identifier: string, opts: { json: boolean }) => {
       await runAction('cancel', { id: identifier }, { json: opts.json }, () => {
         console.log(`Cancelled: ${identifier}`)
@@ -132,7 +134,7 @@ export function registerTaskCommands(cli: CAC): void {
     })
 
   cli
-    .command('history [identifier]', 'Show task history')
+    .command('task history [identifier]', 'Show task history')
     .action(async (identifier: string | undefined, opts: { json: boolean }) => {
       if (identifier) {
         await runAction('historyDetail', { id: identifier }, { json: opts.json })
@@ -153,16 +155,14 @@ export function registerTaskCommands(cli: CAC): void {
     })
 
   cli
-    .command('clean [identifier]', 'Clean task artifacts')
+    .command('task clean [identifier]', 'Clean task artifacts')
     .option('--all', 'Remove every task')
     .option('--force', 'Force removal')
     .option('--purge', 'Purge any caches')
     .action(async (identifier: string | undefined, opts: { all: boolean; force: boolean; purge: boolean }) => {
       if (!identifier && !opts.all) {
-        console.log('Usage: reeve clean <identifier> | --all [--force] [--purge]')
-        console.log(
-          '  --all    Clean all done/failed tasks (add --force for active tasks too)',
-        )
+        console.log('Usage: reeve task clean <identifier> | --all [--force] [--purge]')
+        console.log('  --all    Clean all done/failed tasks (add --force for active tasks too)')
         console.log('  --force  Include active/queued tasks (requires --all)')
         console.log('  --purge  Full deletion (worktree + logs + state). Default preserves logs')
         return

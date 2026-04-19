@@ -48,10 +48,10 @@ build: build-web        ## Build dashboard assets
 # ── CLI Shortcuts ────────────────────────────────────
 
 tasks:                  ## List active tasks
-	bun run src/cli/app.ts tasks
+	bun run src/cli/app.ts task list
 
 history:                ## Show task history
-	bun run src/cli/app.ts history
+	bun run src/cli/app.ts task history
 
 init:                   ## Interactive setup wizard
 	bun run src/cli/app.ts init
