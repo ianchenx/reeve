@@ -215,7 +215,6 @@ async function cmdRun(): Promise<void> {
     forceShutdown: () => runtime.kernel.forceShutdown(),
     afterShutdown: () => {
       stopRenderer?.()
-      removePid()
     },
   })
 }

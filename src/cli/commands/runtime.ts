@@ -2,23 +2,13 @@
 
 import { Hono } from 'hono'
 import { createApiApp, serveSpa } from '../../kernel/server'
-import type { Kernel } from '../../kernel/kernel'
-import type { loadConfig } from '../../config'
+import type { ActionContext } from '../../actions/types'
 
 const DIST_DIR = new URL('../../../dashboard/dist', import.meta.url).pathname
 
-type Config = ReturnType<typeof loadConfig>
-
-type ApiCtx = {
-  kernel?: Kernel
-  config: Config
-  projects: Array<{ slug: string; repo: string }>
-  onActivate?: () => Promise<void>
-}
-
 export function serveDashboard(opts: {
   port: number
-  getCtx: () => ApiCtx
+  getCtx: () => ActionContext
 }): void {
   const apiApp = createApiApp({ getCtx: opts.getCtx })
 
