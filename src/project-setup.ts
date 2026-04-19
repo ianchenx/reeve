@@ -4,6 +4,8 @@
 import { existsSync } from "fs"
 import { resolve } from "path"
 
+import { LinearError, type LinearErrorKind } from "./utils/linear-errors"
+
 // ── GitHub repo discovery ─────────────────────────────────
 
 export interface GitHubRepo {
@@ -120,15 +122,44 @@ export interface LinearTeamProject {
 }
 
 export async function linearGQL(apiKey: string, query: string, variables?: Record<string, unknown>): Promise<unknown> {
-  const res = await fetch("https://api.linear.app/graphql", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": apiKey },
-    body: JSON.stringify({ query, variables }),
-  })
-  if (!res.ok) throw new Error(`Linear API error: ${res.status}`)
+  let res: Response
+  try {
+    res = await fetch("https://api.linear.app/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": apiKey },
+      body: JSON.stringify({ query, variables }),
+    })
+  } catch (cause) {
+    throw new LinearError({
+      kind: "network",
+      message: "Cannot reach Linear API",
+      cause,
+    })
+  }
+
+  if (!res.ok) {
+    throw new LinearError({
+      kind: httpKind(res.status),
+      status: res.status,
+      message: `Linear API error: ${res.status}`,
+    })
+  }
+
   const json = await res.json() as { data?: unknown; errors?: Array<{ message: string }> }
-  if (json.errors?.length) throw new Error(`Linear: ${json.errors[0].message}`)
+  if (json.errors?.length) {
+    throw new LinearError({
+      kind: "graphql",
+      message: `Linear: ${json.errors[0].message}`,
+    })
+  }
   return json.data
+}
+
+function httpKind(status: number): LinearErrorKind {
+  if (status === 401 || status === 403) return "auth"
+  if (status === 429) return "rate-limit"
+  if (status >= 500) return "server"
+  return "unknown"
 }
 
 /**

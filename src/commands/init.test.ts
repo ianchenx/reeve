@@ -11,6 +11,8 @@ interface RunInitOptions {
   teams?: TeamFixture[]
   textValue?: string
   selectChoice?: TeamFixture
+  viewerStatus?: number
+  viewerNetworkFail?: boolean
 }
 
 interface RunInitResult {
@@ -133,6 +135,13 @@ async function runInit(
   globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const body = typeof init?.body === "string" ? init.body : ""
     fetchBodies.push(body)
+
+    if (body.includes("viewer")) {
+      if (options.viewerNetworkFail) throw new TypeError("fetch failed")
+      if (options.viewerStatus && options.viewerStatus !== 200) {
+        return new Response("nope", { status: options.viewerStatus })
+      }
+    }
 
     let resp: unknown
     if (body.includes("viewer")) resp = responses.viewer
@@ -279,5 +288,29 @@ describe("cmdInit", () => {
 
     expect(result.exitCode).toBe(1)
     expect(result.settings.defaultTeam).toBeUndefined()
+  })
+
+  test("invalid API key (401) emits actionable hint, not raw error", async (): Promise<void> => {
+    const result = await runInit({
+      existingSettings: null,
+      viewerStatus: 401,
+    })
+
+    expect(result.exitCode).toBe(1)
+    const allLogs = [...result.errorLogs, ...result.infoLogs].join("\n")
+    expect(allLogs.toLowerCase()).toContain("api key")
+    expect(allLogs).toContain("https://linear.app/settings/account/security")
+    expect(allLogs).not.toMatch(/^Error: Linear API error: 401$/m)
+  })
+
+  test("network failure emits a reachability hint", async (): Promise<void> => {
+    const result = await runInit({
+      existingSettings: null,
+      viewerNetworkFail: true,
+    })
+
+    expect(result.exitCode).toBe(1)
+    const allLogs = [...result.errorLogs, ...result.infoLogs].join("\n")
+    expect(allLogs.toLowerCase()).toMatch(/reach linear|network|proxy/)
   })
 })

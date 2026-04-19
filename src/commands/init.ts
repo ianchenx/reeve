@@ -8,7 +8,14 @@ import { dirname } from "path"
 
 import { getSettingsPath, loadSettings, type ReeveSettings } from "../config"
 import { ensureWorkflowStates, linearGQL, type TeamFixture } from "../project-setup"
+import { classifyLinearError } from "../utils/linear-errors"
 import { trySpawnSync } from "../utils/spawn"
+
+function reportLinearError(err: unknown): void {
+  const info = classifyLinearError(err)
+  p.log.error(info.title)
+  p.log.info(info.hint)
+}
 
 function saveSettings(settings: ReeveSettings): void {
   const settingsPath = getSettingsPath()
@@ -52,8 +59,8 @@ export async function cmdInit(): Promise<void> {
     const data = await linearGQL(apiKey, `query { viewer { name } }`) as { viewer: { name: string } }
     spinner.stop(`Authenticated as ${data.viewer.name}`)
   } catch (err) {
-    spinner.stop("Invalid key")
-    p.log.error(String(err))
+    spinner.stop("Could not verify Linear API key")
+    reportLinearError(err)
     process.exit(1)
   }
 
@@ -65,16 +72,17 @@ export async function cmdInit(): Promise<void> {
   let teams: TeamFixture[]
   try {
     teams = await fetchTeams(apiKey)
-    if (teams.length === 0) {
-      spinner.stop("No teams found")
-      process.exit(1)
-    }
-    spinner.stop(`Found ${teams.length} team${teams.length > 1 ? "s" : ""}`)
   } catch (err) {
-    spinner.stop("Failed")
-    p.log.error(String(err))
+    spinner.stop("Could not fetch Linear teams")
+    reportLinearError(err)
     process.exit(1)
   }
+  if (teams.length === 0) {
+    spinner.stop("No teams found")
+    p.log.info("Your Linear account has no teams. Create one at https://linear.app, then re-run reeve init.")
+    process.exit(1)
+  }
+  spinner.stop(`Found ${teams.length} team${teams.length > 1 ? "s" : ""}`)
 
   let team: TeamFixture
   if (teams.length === 1) {
