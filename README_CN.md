@@ -121,7 +121,8 @@ Reeve 的交付物是 PR，不是 merge。合并是你的决策。
 git clone https://github.com/ianchenx/reeve.git
 cd reeve
 make install                # 安装后端 + Dashboard 依赖
-make dev                    # 后端热重载 + Dashboard 开发服务器
+make dev-daemon             # 一个终端跑后端监听
+make dev-web                # 另一个终端跑 Dashboard 开发服务器
 ```
 
 ## 工作原理
@@ -234,7 +235,8 @@ reeve remove <slug>         移除项目
 
 ```bash
 make install            # 安装所有依赖
-make dev                # 后端监听 + Dashboard 开发服务器
+make dev-daemon         # 后端监听
+make dev-web            # Dashboard 开发服务器
 make test               # 运行全部测试
 make check              # 类型检查 + 测试
 make smoke              # Docker 环境验证 npm 包

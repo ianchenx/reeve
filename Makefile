@@ -1,4 +1,4 @@
-.PHONY: dev dev-server dev-web run start stop restart status test check typecheck build build-web tasks history init install logs clean help \
+.PHONY: dev-daemon dev-web run start stop restart status test check typecheck build build-web tasks history init install logs clean help \
        preflight version-patch version-minor version-major tag release-dry release \
        smoke smoke-full smoke-dev e2e e2e-happy e2e-review
 
@@ -24,17 +24,11 @@ status:                 ## Show task status
 
 # ── Development ──────────────────────────────────────
 
-dev-server:             ## Start backend shell in watch mode (no polling)
-	bun --watch src/cli/app.ts run --no-poll
+dev-daemon:             ## Start backend shell in watch mode (allows incomplete setup)
+	bun --watch src/cli/app.ts daemon
 
 dev-web:                ## Start dashboard dev server
 	cd dashboard && bun run dev
-
-dev:                    ## Start backend watch + dashboard dev server
-	@trap 'kill 0' INT TERM EXIT; \
-	bun --watch src/cli/app.ts run --no-poll & \
-	(cd dashboard && bun run dev) & \
-	wait
 
 test:                   ## Run all tests
 	bun test

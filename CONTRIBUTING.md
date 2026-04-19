@@ -8,7 +8,8 @@ Thanks for your interest in contributing to Reeve.
 git clone https://github.com/ianchenx/reeve.git
 cd reeve
 make install   # install backend + dashboard deps
-make dev       # backend watch + dashboard HMR
+make dev-daemon # backend watch
+make dev-web    # dashboard dev server
 ```
 
 ## Development Workflow

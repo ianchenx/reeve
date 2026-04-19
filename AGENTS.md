@@ -23,7 +23,8 @@ Reeve is an **open-source** project published on GitHub. All code, commits, and 
 | `bun run src/cli/app.ts status` | Check active tasks |
 | `bun run src/cli/app.ts restart` | Stop + start daemon |
 | `bun run src/cli/app.ts clean` | Clean task worktrees/logs |
-| `make dev` | Daemon hot-reload + dashboard HMR |
+| `make dev-daemon` | Start backend watch |
+| `make dev-web` | Start dashboard dev server |
 
 ## Testing
 

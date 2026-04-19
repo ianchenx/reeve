@@ -21,7 +21,7 @@
     "start": "bun src/cli/app.ts start",
     "run": "bun src/cli/app.ts run",
     "restart": "bun src/cli/app.ts restart",
-    "dev-server": "bun --watch src/cli/app.ts run --no-poll",
+    "dev-daemon": "bun --watch src/cli/app.ts daemon",
     "dev-web": "cd dashboard && bun run dev",
     "test": "bun test src/",
     "typecheck": "bunx tsc --noEmit",

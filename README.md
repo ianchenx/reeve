@@ -121,7 +121,8 @@ Reeve delivers PRs, not merges. The merge decision is yours.
 git clone https://github.com/ianchenx/reeve.git
 cd reeve
 make install                # Install backend + dashboard deps
-make dev                    # Backend hot-reload + dashboard dev server
+make dev-daemon             # Backend watch in one terminal
+make dev-web                # Dashboard dev server in another terminal
 ```
 
 ## How It Works
@@ -234,7 +235,8 @@ reeve remove <slug>         Remove a project
 
 ```bash
 make install            # Install all dependencies
-make dev                # Backend watch + dashboard dev server
+make dev-daemon         # Backend watch
+make dev-web            # Dashboard dev server
 make test               # Run all tests
 make check              # Typecheck + tests
 make smoke              # Verify npm package in clean Docker
